@@ -188,13 +188,21 @@
             </div>
         </div>
 
-        <div id="confirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-8 max-sm w-full shadow-2xl">
-                <h3 class="text-lg font-black text-slate-900 mb-2">确认减少？</h3>
-                <p id="confirmText" class="text-slate-500 text-sm mb-8 leading-relaxed"></p>
-                <div class="flex gap-3">
-                    <button onclick="closeConfirm()" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs hover:bg-slate-200 transition-colors">取消</button>
-                    <button id="confirmActionBtn" class="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-xs hover:bg-red-600 shadow-lg shadow-red-100 transition-all">减少次数</button>
+        <!-- 确认减少次数的弹窗 - 已调整为更小更精致的尺寸 -->
+        <div id="confirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] hidden flex items-center justify-center p-6">
+            <div class="bg-white rounded-[2rem] p-8 max-w-[340px] w-full shadow-2xl border border-white/20">
+                <div class="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-5 mx-auto">
+                    <i data-lucide="minus-circle" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-900 mb-2 text-center">确认减少？</h3>
+                <p id="confirmText" class="text-slate-500 text-xs mb-8 leading-relaxed text-center"></p>
+                <div class="flex flex-col gap-3">
+                    <button id="confirmActionBtn" class="w-full py-3.5 rounded-xl bg-red-500 text-white font-black text-[13px] hover:bg-red-600 shadow-lg shadow-red-100 transition-all active:scale-95 order-1">
+                        减少次数
+                    </button>
+                    <button onclick="closeConfirm()" class="w-full py-3.5 rounded-xl bg-slate-100 text-slate-500 font-bold text-[13px] hover:bg-slate-200 transition-colors order-2">
+                        取消
+                    </button>
                 </div>
             </div>
         </div>
