@@ -17,10 +17,11 @@
             color: #1e293b;
         }
 
-        /* 优化后的均衡列宽 */
-        .col-rank { width: 140px; }
-        .col-name { width: 200px; }
-        .col-total { width: 250px; } /* 增加宽度以容纳星星 */
+        /* 动态调整列宽 */
+        .col-rank { width: 100px; }
+        .col-name { width: 160px; }
+        .col-kpi { width: 140px; } 
+        .col-total { min-width: 200px; } 
         .col-action { width: 220px; text-align: right; }
         
         .rank-table tr {
@@ -30,7 +31,6 @@
             background-color: #f1f5f9;
         }
 
-        /* 星星样式 */
         .star-icon {
             color: #fbbf24;
             text-shadow: 0 1px 2px rgba(0,0,0,0.1);
@@ -38,7 +38,6 @@
             font-size: 14px;
         }
 
-        /* 自定义下拉框 */
         select {
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='C19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
@@ -70,53 +69,15 @@
             background: #2563eb;
         }
 
-        /* 提示框样式 */
-        .tooltip {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-        }
-        
-        .tooltip .tooltip-text {
-            visibility: hidden;
-            background-color: #1e293b;
-            color: #fff;
-            text-align: center;
-            border-radius: 4px;
-            padding: 4px 8px;
-            position: absolute;
-            z-index: 50;
-            opacity: 0;
-            transition: opacity 0.2s;
-            font-size: 11px;
-            font-weight: normal;
-            white-space: nowrap;
-            pointer-events: none;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        }
-
-        .tooltip-right .tooltip-text {
-            left: 120%;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .tooltip-left .tooltip-text {
-            right: 120%;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .tooltip:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
+        #toast {
+            z-index: 200;
         }
     </style>
 </head>
 <body class="min-h-screen antialiased">
     <div id="app" class="p-4 md:p-10">
         <!-- 顶部控制栏 -->
-        <div class="max-w-5xl mx-auto flex flex-wrap items-center gap-4 mb-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center gap-4 mb-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <div class="flex items-center gap-3">
                 <select id="tabSelect" onchange="selectTab(this.value)" class="bg-white border border-slate-200 text-slate-700 py-2 pl-4 pr-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm">
                     <option value="A1">A1 榜单</option>
@@ -129,7 +90,6 @@
                 </select>
             </div>
 
-            <!-- 导出按钮组 -->
             <div class="ml-auto flex items-center gap-2">
                 <button onclick="exportToExcel()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors text-sm shadow-sm">
                     <i data-lucide="file-spreadsheet" class="w-4 h-4 text-green-600"></i> 导出 Excel
@@ -141,8 +101,7 @@
         </div>
 
         <!-- 数据面板 -->
-        <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <!-- 导航栏 -->
+        <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="flex items-center justify-between border-b border-slate-100 px-8">
                 <div class="flex">
                     <span id="nav-rank" onclick="switchView('rank')" class="nav-tab active text-sm">排名列表</span>
@@ -153,13 +112,12 @@
                 </div>
             </div>
 
-            <!-- 数据展示区 -->
             <div id="content-area" class="overflow-x-auto">
                 <!-- 内容由 JavaScript 动态填充 -->
             </div>
         </div>
 
-        <!-- 数据安全提示弹窗 (进入页面时显示) -->
+        <!-- 数据安全提示 -->
         <div id="securityModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-white/20">
                 <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
@@ -167,21 +125,18 @@
                 </div>
                 <h3 class="text-xl font-bold text-slate-800 mb-3">数据保存提醒</h3>
                 <div class="text-slate-500 text-sm space-y-4 mb-8 leading-relaxed">
-                    <p>本系统数据保存在您当前浏览器的 <span class="font-bold text-slate-700">本地存储</span> 中，为了确保您的排名数据不丢失，请知悉以下注意事项：</p>
+                    <p>数据仅保存在您的浏览器本地，请勿清理缓存或更换浏览器。</p>
                     <ul class="space-y-2 list-disc list-inside bg-slate-50 p-4 rounded-xl text-xs">
-                        <li><span class="text-red-500 font-bold">请勿清理浏览器缓存</span>，否则数据将永久删除。</li>
-                        <li><span class="text-red-500 font-bold">请勿更换浏览器</span>（如从微信换到Safari），不同浏览器数据不互通。</li>
-                        <li>建议 <span class="text-blue-600 font-bold">每周定期导出 Excel</span> 进行本地备份。</li>
+                        <li>建议 <span class="text-blue-600 font-bold">每周定期导出 Excel</span> 备份。</li>
                     </ul>
-                    <p class="text-[11px] text-slate-400 italic">※ 数据仅存放在您的设备上，不会上传至任何服务器。</p>
                 </div>
-                <button onclick="closeSecurityModal()" class="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                <button onclick="closeSecurityModal()" class="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200">
                     我已了解，开始使用
                 </button>
             </div>
         </div>
 
-        <!-- 全局确认弹窗 -->
+        <!-- 确认弹窗 -->
         <div id="confirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
                 <h3 class="text-base font-bold text-slate-800 mb-2">确认操作</h3>
@@ -193,8 +148,7 @@
             </div>
         </div>
         
-        <!-- Toast 提示 -->
-        <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-lg shadow-lg opacity-0 transition-all duration-300 pointer-events-none z-[200] text-xs font-medium">已更新</div>
+        <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-lg shadow-lg opacity-0 transition-all duration-300 pointer-events-none text-xs font-medium">已更新</div>
     </div>
 
     <script>
@@ -209,24 +163,24 @@
             data: {}
         };
 
-        // 核心功能：自动计算当前是第几周
+        // 根据榜单类型获取对应文案
+        function getLabels() {
+            if (state.currentTab === 'NP') {
+                return { totalHeader: '患者数', btnAdd: '患者+1', btnSub: '患者-1', toastAdd: '患者数已增加' };
+            }
+            return { totalHeader: '总次数及荣誉', btnAdd: '次数+1', btnSub: '次数-1', toastAdd: '计数已增加' };
+        }
+
         function getAutoDetectedWeek(mIdx) {
             const today = new Date();
             const year = today.getFullYear();
-            // 如果年份不是今年（跨年情况），这里默认处理当前年份
-            if (today.getMonth() !== mIdx) return 1; // 如果选的不是本月，默认第一周
-
+            if (today.getMonth() !== mIdx) return 1; 
             const firstDayOfMonth = new Date(year, mIdx, 1);
             let firstMonday = new Date(firstDayOfMonth);
-            while (firstMonday.getDay() !== 1) {
-                firstMonday.setDate(firstMonday.getDate() + 1);
-            }
-
+            while (firstMonday.getDay() !== 1) { firstMonday.setDate(firstMonday.getDate() + 1); }
             const diffInDays = Math.floor((today - firstMonday) / (24 * 60 * 60 * 1000));
-            if (diffInDays < 0) return 1; // 还没到本月第一个周一
-            
-            const weekNum = Math.floor(diffInDays / 7) + 1;
-            return Math.min(Math.max(weekNum, 1), 4); // 限制在1-4周
+            if (diffInDays < 0) return 1; 
+            return Math.min(Math.max(Math.floor(diffInDays / 7) + 1, 1), 4);
         }
 
         try {
@@ -276,9 +230,7 @@
         function getStarsHtml(count) {
             if (count <= 0) return '';
             let stars = '';
-            for (let i = 0; i < count; i++) {
-                stars += '<span class="star-icon">★</span>';
-            }
+            for (let i = 0; i < count; i++) { stars += '<span class="star-icon">★</span>'; }
             return stars;
         }
 
@@ -293,7 +245,6 @@
             const container = document.getElementById('content-area');
             if (state.view === 'rank') renderRankView(container);
             else renderTrendView(container);
-            
             document.getElementById('last-update-time').innerText = `最后更新：${new Date().toLocaleDateString('zh-CN', {month:'long', day:'numeric'})}`;
             if (window.lucide) lucide.createIcons();
             save();
@@ -301,48 +252,64 @@
 
         function renderRankView(container) {
             const items = calculateRanks(getDataByKey(getStorageKey()));
+            const labels = getLabels();
+            const showKpi = state.currentTab === 'A1';
+
             container.innerHTML = `
                 <table class="rank-table w-full text-left border-collapse">
                     <thead>
                         <tr class="text-slate-400 text-[11px] border-b border-slate-50 bg-slate-50/50">
                             <th class="col-rank px-8 py-3.5 font-bold">排名</th>
                             <th class="col-name px-4 py-3.5 font-bold">姓名</th>
-                            <th class="col-total px-4 py-3.5 font-bold">总次数及荣誉</th>
-                            <th class="col-action px-8 py-3.5 font-bold text-right">计数操作</th>
+                            ${showKpi ? '<th class="col-kpi px-4 py-3.5 font-bold">KPI 百分比</th>' : ''}
+                            <th class="col-total px-4 py-3.5 font-bold">${labels.totalHeader}</th>
+                            <th class="col-action px-8 py-3.5 font-bold text-right">管理操作</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm">
-                        ${items.map(item => `
-                            <tr class="border-b border-slate-50">
-                                <td class="px-8 py-4">
-                                    <span class="font-bold ${item.rank <= 3 ? 'text-blue-600' : 'text-slate-400'}">
-                                        ${item.rank}${getTrophy(item.rank)}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-7 h-7 rounded bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 font-bold border border-slate-200">
-                                            ${item.name.slice(0,1)}
+                        ${items.map(item => {
+                            const kpi = ((item.count / 2) * 100).toFixed(0);
+                            return `
+                                <tr class="border-b border-slate-50">
+                                    <td class="px-8 py-4">
+                                        <span class="font-bold ${item.rank <= 3 ? 'text-blue-600' : 'text-slate-400'}">
+                                            ${item.rank}${getTrophy(item.rank)}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-7 h-7 rounded bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 font-bold border border-slate-200">
+                                                ${item.name.slice(0,1)}
+                                            </div>
+                                            <span class="font-medium text-slate-700">${item.name}</span>
                                         </div>
-                                        <span class="font-medium text-slate-700">${item.name}</span>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-4 font-black text-slate-900 text-sm tabular-nums">
-                                    <div class="flex items-center gap-1">
-                                        <span>${item.count}</span>
-                                        <div class="flex flex-wrap max-w-[150px]">
-                                            ${getStarsHtml(item.count)}
+                                    </td>
+                                    ${showKpi ? `
+                                    <td class="px-4 py-4">
+                                        <div class="flex flex-col gap-1">
+                                            <span class="font-bold text-slate-600 text-xs">${kpi}%</span>
+                                            <div class="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                                <div class="h-full bg-blue-500" style="width: ${Math.min(kpi, 100)}%"></div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td class="px-8 py-4">
-                                    <div class="flex justify-end items-center gap-2">
-                                        <button onclick="increment('${item.name}')" class="px-3 py-1 bg-blue-600 text-white rounded text-[11px] font-bold hover:bg-blue-700 shadow-sm transition-all active:scale-95">次数+1</button>
-                                        <button onclick="askDecrement('${item.name}')" class="px-3 py-1 bg-white border border-slate-200 text-slate-400 rounded text-[11px] font-bold hover:border-red-200 hover:text-red-500 transition-all active:scale-95">次数-1</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
+                                    </td>` : ''}
+                                    <td class="px-4 py-4 font-black text-slate-900 text-sm tabular-nums">
+                                        <div class="flex items-center gap-1">
+                                            <span>${item.count}</span>
+                                            <div class="flex flex-wrap max-w-[150px]">
+                                                ${getStarsHtml(item.count)}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-4">
+                                        <div class="flex justify-end items-center gap-2">
+                                            <button onclick="increment('${item.name}')" class="px-3 py-1 bg-blue-600 text-white rounded text-[11px] font-bold hover:bg-blue-700 shadow-sm transition-all active:scale-95">${labels.btnAdd}</button>
+                                            <button onclick="askDecrement('${item.name}')" class="px-3 py-1 bg-white border border-slate-200 text-slate-400 rounded text-[11px] font-bold hover:border-red-200 hover:text-red-500 transition-all active:scale-95">${labels.btnSub}</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             `;
@@ -359,7 +326,7 @@
                         <tr class="text-slate-400 text-[11px] border-b border-slate-50 bg-slate-50/50">
                             <th class="col-rank px-8 py-3.5 font-bold">当前排名</th>
                             <th class="col-name px-4 py-3.5 font-bold">姓名</th>
-                            <th class="px-4 py-3.5 font-bold text-center">变化趋势</th>
+                            <th class="px-4 py-3.5 font-bold text-center">趋势</th>
                             <th class="col-total px-8 py-3.5 font-bold text-right">上周排名</th>
                         </tr>
                     </thead>
@@ -394,29 +361,26 @@
 
         function increment(name) {
             const m = getDataByKey(getStorageKey()).find(x => x.name === name);
-            if (m) { m.count++; render(); showToast(`${name} 计数已增加`); }
+            if (m) { m.count++; render(); showToast(`${name} ${getLabels().toastAdd}`); }
         }
 
         let pendingMember = null;
         function askDecrement(name) {
             const m = getDataByKey(getStorageKey()).find(x => x.name === name);
-            if (!m || m.count <= 0) { showToast('无法继续减少'); return; }
+            if (!m || m.count <= 0) { showToast('数值已为0，无法减少'); return; }
             pendingMember = name;
-            document.getElementById('confirmText').innerText = `减少“${name}”的本次统计次数吗？`;
+            const labels = getLabels();
+            document.getElementById('confirmText').innerText = `减少“${name}”的本次${labels.totalHeader}统计吗？`;
             document.getElementById('confirmModal').classList.remove('hidden');
             document.getElementById('confirmActionBtn').onclick = () => {
                 const target = getDataByKey(getStorageKey()).find(x => x.name === pendingMember);
-                if (target) { target.count--; render(); showToast(`数据已更新`); }
+                if (target) { target.count--; render(); showToast(`数据已成功核减`); }
                 closeConfirm();
             };
         }
 
         function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); pendingMember = null; }
-        
-        function closeSecurityModal() {
-            document.getElementById('securityModal').style.display = 'none';
-        }
-
+        function closeSecurityModal() { document.getElementById('securityModal').style.display = 'none'; }
         function save() { localStorage.setItem('rankings_v6', JSON.stringify(state.data)); }
         
         function showToast(msg) {
@@ -427,14 +391,12 @@
 
         function selectTab(t) { state.currentTab = t; render(); }
 
-        // 月份切换：重置周数为该月当前周或第1周
         function updateMonth() {
             state.currentMonth = parseInt(document.getElementById('monthSelect').value);
             state.currentWeek = (state.currentMonth === new Date().getMonth()) ? getAutoDetectedWeek(state.currentMonth) : 1;
             refreshWeekOptions();
         }
 
-        // 刷新周数下拉列表
         function refreshWeekOptions() {
             const ws = document.getElementById('weekSelect');
             ws.innerHTML = '';
@@ -453,45 +415,51 @@
         function exportToExcel() {
             try {
                 const items = calculateRanks(getDataByKey(getStorageKey()));
-                const filename = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周排名报表.xlsx`;
-                const excelData = items.map(i => ({ "排名": i.rank, "姓名": i.name, "总次数": i.count }));
+                const labels = getLabels();
+                const filename = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周报表.xlsx`;
+                
+                const excelData = items.map(i => {
+                    const row = { "排名": i.rank, "姓名": i.name };
+                    if (state.currentTab === 'A1') row["KPI百分比"] = ((i.count / 2) * 100).toFixed(0) + "%";
+                    row[labels.totalHeader] = i.count;
+                    return row;
+                });
+
                 const worksheet = XLSX.utils.json_to_sheet(excelData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "排名列表");
                 XLSX.writeFile(workbook, filename);
-                showToast('Excel 文件已生成');
-            } catch (error) { showToast('导出 Excel 失败'); }
+                showToast('Excel 文件已导出');
+            } catch (error) { showToast('导出失败'); }
         }
 
         function copyToClipboard() {
             const items = calculateRanks(getDataByKey(getStorageKey()));
+            const labels = getLabels();
             let text = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周排名\n`;
-            items.forEach(i => text += `${i.rank}${getTrophy(i.rank)}. ${i.name}：${i.count}\n`);
+            items.forEach(i => {
+                const kpiPart = state.currentTab === 'A1' ? ` | KPI: ${((i.count / 2) * 100).toFixed(0)}%` : '';
+                text += `${i.rank}${getTrophy(i.rank)}. ${i.name}：${labels.totalHeader} ${i.count}${kpiPart}\n`;
+            });
             const el = document.createElement('textarea');
             el.value = text; document.body.appendChild(el); el.select();
             document.execCommand('copy'); document.body.removeChild(el);
-            showToast('已生成 TXT 文本并复制');
+            showToast('TXT 内容已复制到剪贴板');
         }
 
         window.onload = () => {
-            // 初始化月份下拉框
             const ms = document.getElementById('monthSelect');
             const now = new Date();
             const currentM = now.getMonth();
-            
             MONTHS.forEach((m, i) => {
                 const opt = document.createElement('option');
                 opt.value = i; opt.text = m;
                 opt.selected = (i === currentM);
                 ms.add(opt);
             });
-
-            // 初始化状态并自动检索时间
             state.currentMonth = currentM;
             state.currentWeek = getAutoDetectedWeek(currentM);
-            
             refreshWeekOptions();
-            if (window.lucide) lucide.createIcons();
         };
     </script>
 </body>
