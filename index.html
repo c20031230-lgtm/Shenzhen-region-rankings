@@ -28,7 +28,7 @@
         .col-rank { width: 110px; }
         .col-name { width: 220px; }
         .col-kpi { width: 150px; } 
-        .col-total { min-width: 200px; } 
+        .col-total { min-width: 250px; } 
         .col-action { width: 220px; text-align: right; }
 
         /* 趋势页面均匀化布局 */
@@ -47,7 +47,7 @@
         .star-icon {
             color: #fbbf24;
             filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.4));
-            margin-left: 2px;
+            margin-left: 1px;
             font-size: 14px;
         }
 
@@ -363,6 +363,11 @@
                             else if (item.rank === 2) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-silver"></i>';
                             else if (item.rank === 3) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-bronze"></i>';
 
+                            // 移除上限限制，生成完整星星列表
+                            const starsHtml = item.count > 0 
+                                ? Array(item.count).fill('<i data-lucide="star" class="w-3 h-3 star-icon fill-current"></i>').join('') 
+                                : '';
+
                             return `
                                 <tr class="border-b border-slate-50">
                                     <td class="px-10 py-6">
@@ -393,11 +398,10 @@
                                         </div>
                                     </td>` : ''}
                                     <td class="px-4 py-6">
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex flex-col gap-1">
                                             <span class="font-black text-2xl text-slate-900 tabular-nums leading-none">${item.count}</span>
-                                            <div class="flex items-center opacity-80">
-                                                ${item.count > 0 ? Array(Math.min(item.count, 5)).fill('<i data-lucide="star" class="w-3 h-3 star-icon fill-current"></i>').join('') : ''}
-                                                ${item.count > 5 ? '<span class="text-[10px] font-bold text-amber-500 ml-1">+</span>' : ''}
+                                            <div class="flex flex-wrap items-center max-w-[200px]">
+                                                ${starsHtml}
                                             </div>
                                         </div>
                                     </td>
@@ -546,7 +550,7 @@
                 const worksheet = XLSX.utils.json_to_sheet(excelData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Ranking");
-                XLSX.writeFile(workbook, filename);
+                XLSX.writeFile(workbook, workbook, filename);
                 showToast('导出: Excel 文件已生成');
             } catch (error) { showToast('错误: 导出失败'); }
         }
@@ -555,7 +559,7 @@
             const items = calculateRanks(getDataByKey(getStorageKey()));
             const config = getTabConfig();
             
-            // 构造标题：【NP】5月第1周排名
+            // 构造标题
             let text = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周排名\n`;
             
             // 构造每行数据
@@ -565,7 +569,6 @@
                 else if (i.rank === 2) rankSymbol = "2 🥈.";
                 else if (i.rank === 3) rankSymbol = "3 🥉.";
                 
-                // 格式：1 🏆. 谢本权：患者数 6
                 text += `${rankSymbol} ${i.name}：${config.totalHeader} ${i.count}\n`;
             });
 
