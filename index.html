@@ -177,10 +177,11 @@
         <!-- 弹窗部分 -->
         <div id="securityModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[110] flex items-center justify-center p-4">
             <div class="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
-                <div class="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-8 rotate-3">
+                <!-- 修正：移除 rotate-3，确保居中 -->
+                <div class="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-8 mx-auto">
                     <i data-lucide="alert-triangle" class="w-8 h-8"></i>
                 </div>
-                <h3 class="text-2xl font-black text-slate-900 mb-4">重要数据提醒</h3>
+                <h3 class="text-2xl font-black text-slate-900 mb-4 text-center">重要数据提醒</h3>
                 <div class="text-slate-500 text-sm space-y-4 mb-8 leading-relaxed">
                     <p>数据仅保存在您的浏览器本地，请勿清理缓存或更换浏览器。</p>
                     <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
@@ -259,34 +260,71 @@
             };
         }
 
+        // 修正：彻底修复日期计算逻辑，支持跨月连接和所有完整周
+        function getWeekDateRange(mIdx, wNum) {
+            const year = new Date().getFullYear();
+            // 第一步：找到该月 1 号
+            const firstDateOfMonth = new Date(year, mIdx, 1);
+            
+            // 第二步：找到该月第一个周一
+            let firstMonday = new Date(firstDateOfMonth);
+            while (firstMonday.getDay() !== 1) {
+                firstMonday.setDate(firstMonday.getDate() + 1);
+            }
+            
+            // 第三步：根据周数计算起始和结束日期
+            const targetMon = new Date(firstMonday);
+            targetMon.setDate(firstMonday.getDate() + (wNum - 1) * 7);
+            
+            const targetSun = new Date(targetMon);
+            targetSun.setDate(targetMon.getDate() + 6);
+            
+            return {
+                start: `${targetMon.getMonth() + 1}/${targetMon.getDate()}`,
+                end: `${targetSun.getMonth() + 1}/${targetSun.getDate()}`,
+                fullString: `${targetMon.getMonth() + 1}/${targetMon.getDate()}-${targetSun.getMonth() + 1}/${targetSun.getDate()}`
+            };
+        }
+
+        // 动态计算该月有多少个“周一”起始的周
+        function getWeeksInMonth(mIdx) {
+            const year = new Date().getFullYear();
+            const firstDate = new Date(year, mIdx, 1);
+            const lastDate = new Date(year, mIdx + 1, 0); // 下个月的第0天即本月最后一天
+            
+            let firstMonday = new Date(firstDate);
+            while (firstMonday.getDay() !== 1) firstMonday.setDate(firstMonday.getDate() + 1);
+            
+            let count = 0;
+            let tempDate = new Date(firstMonday);
+            while (tempDate <= lastDate) {
+                count++;
+                tempDate.setDate(tempDate.getDate() + 7);
+            }
+            // 确保至少有 4 周，如果是大型月可能有 5 周
+            return Math.max(count, 4);
+        }
+
         function getAutoDetectedWeek(mIdx) {
             const today = new Date();
             const year = today.getFullYear();
             if (today.getMonth() !== mIdx) return 1; 
+            
             const firstDayOfMonth = new Date(year, mIdx, 1);
             let firstMonday = new Date(firstDayOfMonth);
-            while (firstMonday.getDay() !== 1) { firstMonday.setDate(firstMonday.getDate() + 1); }
+            while (firstMonday.getDay() !== 1) firstMonday.setDate(firstMonday.getDate() + 1);
+            
             const diffInDays = Math.floor((today - firstMonday) / (24 * 60 * 60 * 1000));
             if (diffInDays < 0) return 1; 
-            return Math.min(Math.max(Math.floor(diffInDays / 7) + 1, 1), 4);
+            
+            const maxWeeks = getWeeksInMonth(mIdx);
+            return Math.min(Math.max(Math.floor(diffInDays / 7) + 1, 1), maxWeeks);
         }
 
         try {
             const saved = localStorage.getItem('rankings_v6_style');
             if (saved) state.data = JSON.parse(saved);
         } catch(e) { console.error(e); }
-
-        function getWeekDateRange(mIdx, wNum) {
-            const year = new Date().getFullYear();
-            const first = new Date(year, mIdx, 1);
-            let mon = new Date(first);
-            while (mon.getDay() !== 1) mon.setDate(mon.getDate() + 1);
-            const targetMon = new Date(mon);
-            targetMon.setDate(mon.getDate() + (wNum - 1) * 7);
-            const targetSun = new Date(targetMon);
-            targetSun.setDate(targetMon.getDate() + 6);
-            return `${targetMon.getMonth() + 1}/${targetMon.getDate()}-${targetSun.getDate()}`;
-        }
 
         function getStorageKey(m = state.currentMonth, w = state.currentWeek, t = state.currentTab) {
             return `${m}-${w}-${t}`;
@@ -327,7 +365,8 @@
             bigTabTitle.className = `text-5xl font-black tracking-tighter text-slate-900 uppercase italic leading-none mb-2 transition-all duration-500`;
             tabIndicator.className = `w-3 h-12 rounded-full shadow-lg transition-all duration-500 ${config.themeColor}`;
             
-            document.getElementById('currentDateRange').innerText = `${MONTHS[state.currentMonth]} 第 ${state.currentWeek} 周 (${getWeekDateRange(state.currentMonth, state.currentWeek)})`;
+            const rangeInfo = getWeekDateRange(state.currentMonth, state.currentWeek);
+            document.getElementById('currentDateRange').innerText = `${MONTHS[state.currentMonth]} 第 ${state.currentWeek} 周 (${rangeInfo.fullString})`;
 
             if (state.view === 'rank') renderRankView(container, config);
             else renderTrendView(container);
@@ -357,13 +396,11 @@
                             const kpi = ((item.count / 2) * 100).toFixed(0);
                             const badgeClass = item.rank <= 3 ? `badge-${item.rank}` : 'bg-slate-100 text-slate-400';
                             
-                            // 激励奖杯逻辑
                             let trophyHtml = '';
                             if (item.rank === 1) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-gold animate-bounce"></i>';
                             else if (item.rank === 2) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-silver"></i>';
                             else if (item.rank === 3) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-bronze"></i>';
 
-                            // 移除上限限制，生成完整星星列表
                             const starsHtml = item.count > 0 
                                 ? Array(item.count).fill('<i data-lucide="star" class="w-3 h-3 star-icon fill-current"></i>').join('') 
                                 : '';
@@ -524,10 +561,13 @@
         function refreshWeekOptions() {
             const ws = document.getElementById('weekSelect');
             ws.innerHTML = '';
-            for (let i = 1; i <= 4; i++) {
+            const totalWeeks = getWeeksInMonth(state.currentMonth);
+            
+            for (let i = 1; i <= totalWeeks; i++) {
                 const opt = document.createElement('option');
                 opt.value = i;
-                opt.text = `第 ${i} 周 (${getWeekDateRange(state.currentMonth, i)})`;
+                const range = getWeekDateRange(state.currentMonth, i);
+                opt.text = `第 ${i} 周 (${range.fullString})`;
                 opt.selected = (i === state.currentWeek);
                 ws.add(opt);
             }
@@ -550,7 +590,7 @@
                 const worksheet = XLSX.utils.json_to_sheet(excelData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Ranking");
-                XLSX.writeFile(workbook, workbook, filename);
+                XLSX.writeFile(workbook, filename);
                 showToast('导出: Excel 文件已生成');
             } catch (error) { showToast('错误: 导出失败'); }
         }
@@ -558,20 +598,14 @@
         function copyToClipboard() {
             const items = calculateRanks(getDataByKey(getStorageKey()));
             const config = getTabConfig();
-            
-            // 构造标题
             let text = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周排名\n`;
-            
-            // 构造每行数据
             items.forEach(i => {
                 let rankSymbol = i.rank + ".";
                 if (i.rank === 1) rankSymbol = "1 🏆.";
                 else if (i.rank === 2) rankSymbol = "2 🥈.";
                 else if (i.rank === 3) rankSymbol = "3 🥉.";
-                
                 text += `${rankSymbol} ${i.name}：${config.totalHeader} ${i.count}\n`;
             });
-
             const el = document.createElement('textarea');
             el.value = text;
             document.body.appendChild(el);
