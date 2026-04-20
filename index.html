@@ -20,7 +20,7 @@
         /* 优化后的均衡列宽 */
         .col-rank { width: 140px; }
         .col-name { width: 200px; }
-        .col-total { width: 180px; }
+        .col-total { width: 250px; } /* 增加宽度以容纳星星 */
         .col-action { width: 220px; text-align: right; }
         
         .rank-table tr {
@@ -28,6 +28,14 @@
         }
         .rank-table tbody tr:hover {
             background-color: #f1f5f9;
+        }
+
+        /* 星星样式 */
+        .star-icon {
+            color: #fbbf24;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            margin-left: 2px;
+            font-size: 14px;
         }
 
         /* 自定义下拉框 */
@@ -62,7 +70,7 @@
             background: #2563eb;
         }
 
-        /* 优化后的 Tooltip 定位逻辑 */
+        /* 提示框样式 */
         .tooltip {
             position: relative;
             display: inline-flex;
@@ -115,7 +123,7 @@
                     <option value="NP">NP 榜单</option>
                     <option value="ZYF">早夜访榜单</option>
                 </select>
-                <select id="monthSelect" onchange="updateWeeks()" class="bg-white border border-slate-200 text-slate-700 py-2 pl-4 pr-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm">
+                <select id="monthSelect" onchange="updateMonth()" class="bg-white border border-slate-200 text-slate-700 py-2 pl-4 pr-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm">
                 </select>
                 <select id="weekSelect" onchange="changeWeek(this.value)" class="bg-white border border-slate-200 text-slate-700 py-2 pl-4 pr-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm min-w-[160px]">
                 </select>
@@ -193,37 +201,33 @@
         const FIXED_MEMBERS = ["谢本权", "李洁妮", "傅思芝", "陈鸿钦", "温秋雨", "邹颖威"];
         const MONTHS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
         
-        // 初始状态逻辑：自动获取当前年月和当前周数
-        const today = new Date();
-        
-        // 获取当前是本月第几周的辅助函数
-        function getCurrentWeekNumber() {
-            const date = new Date();
-            const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-            // 找到第一个周一
+        let state = {
+            currentTab: 'A1',
+            currentMonth: new Date().getMonth(),
+            currentWeek: 1,
+            view: 'rank',
+            data: {}
+        };
+
+        // 核心功能：自动计算当前是第几周
+        function getAutoDetectedWeek(mIdx) {
+            const today = new Date();
+            const year = today.getFullYear();
+            // 如果年份不是今年（跨年情况），这里默认处理当前年份
+            if (today.getMonth() !== mIdx) return 1; // 如果选的不是本月，默认第一周
+
+            const firstDayOfMonth = new Date(year, mIdx, 1);
             let firstMonday = new Date(firstDayOfMonth);
             while (firstMonday.getDay() !== 1) {
                 firstMonday.setDate(firstMonday.getDate() + 1);
             }
-            
-            // 如果今天在第一个周一之前，算作第一周
-            if (date < firstMonday) return 1;
-            
-            // 计算距离第一个周一过了多少天
-            const diffDays = Math.floor((date - firstMonday) / (24 * 60 * 60 * 1000));
-            const weekNum = Math.floor(diffDays / 7) + 1;
-            
-            // 限制最大周数为4周
-            return Math.min(weekNum, 4);
-        }
 
-        let state = {
-            currentTab: 'A1',
-            currentMonth: today.getMonth(),
-            currentWeek: getCurrentWeekNumber(),
-            view: 'rank',
-            data: {}
-        };
+            const diffInDays = Math.floor((today - firstMonday) / (24 * 60 * 60 * 1000));
+            if (diffInDays < 0) return 1; // 还没到本月第一个周一
+            
+            const weekNum = Math.floor(diffInDays / 7) + 1;
+            return Math.min(Math.max(weekNum, 1), 4); // 限制在1-4周
+        }
 
         try {
             const saved = localStorage.getItem('rankings_v6');
@@ -269,6 +273,22 @@
             render();
         }
 
+        function getStarsHtml(count) {
+            if (count <= 0) return '';
+            let stars = '';
+            for (let i = 0; i < count; i++) {
+                stars += '<span class="star-icon">★</span>';
+            }
+            return stars;
+        }
+
+        function getTrophy(rank) {
+            if (rank === 1) return ' 🏆';
+            if (rank === 2) return ' 🥈';
+            if (rank === 3) return ' 🥉';
+            return '';
+        }
+
         function render() {
             const container = document.getElementById('content-area');
             if (state.view === 'rank') renderRankView(container);
@@ -285,49 +305,19 @@
                 <table class="rank-table w-full text-left border-collapse">
                     <thead>
                         <tr class="text-slate-400 text-[11px] border-b border-slate-50 bg-slate-50/50">
-                            <th class="col-rank px-8 py-3.5">
-                                <div class="flex items-center gap-1 font-bold">
-                                    排名
-                                    <div class="tooltip tooltip-right">
-                                        <i data-lucide="info" class="w-3.5 h-3.5 cursor-help opacity-60"></i>
-                                        <span class="tooltip-text">当前周期实时排行</span>
-                                    </div>
-                                </div>
-                            </th>
-                            <th class="col-name px-4 py-3.5">
-                                <div class="flex items-center gap-1 font-bold">
-                                    姓名
-                                    <div class="tooltip tooltip-right">
-                                        <i data-lucide="info" class="w-3.5 h-3.5 cursor-help opacity-60"></i>
-                                        <span class="tooltip-text">榜单覆盖的全体成员</span>
-                                    </div>
-                                </div>
-                            </th>
-                            <th class="col-total px-4 py-3.5">
-                                <div class="flex items-center gap-1 font-bold">
-                                    总次数
-                                    <div class="tooltip tooltip-left">
-                                        <i data-lucide="info" class="w-3.5 h-3.5 cursor-help opacity-60"></i>
-                                        <span class="tooltip-text">周期累计执行总数</span>
-                                    </div>
-                                </div>
-                            </th>
-                            <th class="col-action px-8 py-3.5">
-                                <div class="flex items-center justify-end gap-1 font-bold text-right">
-                                    计数操作
-                                    <div class="tooltip tooltip-left">
-                                        <i data-lucide="info" class="w-3.5 h-3.5 cursor-help opacity-60"></i>
-                                        <span class="tooltip-text">手动增减记录次数</span>
-                                    </div>
-                                </div>
-                            </th>
+                            <th class="col-rank px-8 py-3.5 font-bold">排名</th>
+                            <th class="col-name px-4 py-3.5 font-bold">姓名</th>
+                            <th class="col-total px-4 py-3.5 font-bold">总次数及荣誉</th>
+                            <th class="col-action px-8 py-3.5 font-bold text-right">计数操作</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm">
                         ${items.map(item => `
                             <tr class="border-b border-slate-50">
                                 <td class="px-8 py-4">
-                                    <span class="font-bold ${item.rank <= 3 ? 'text-blue-600' : 'text-slate-400'}">${item.rank}</span>
+                                    <span class="font-bold ${item.rank <= 3 ? 'text-blue-600' : 'text-slate-400'}">
+                                        ${item.rank}${getTrophy(item.rank)}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-4">
                                     <div class="flex items-center gap-3">
@@ -338,7 +328,12 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-4 font-black text-slate-900 text-sm tabular-nums">
-                                    ${item.count}
+                                    <div class="flex items-center gap-1">
+                                        <span>${item.count}</span>
+                                        <div class="flex flex-wrap max-w-[150px]">
+                                            ${getStarsHtml(item.count)}
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="px-8 py-4">
                                     <div class="flex justify-end items-center gap-2">
@@ -385,7 +380,7 @@
 
                             return `
                                 <tr class="border-b border-slate-50">
-                                    <td class="px-8 py-4"><span class="font-bold text-slate-700">${item.rank}</span></td>
+                                    <td class="px-8 py-4"><span class="font-bold text-slate-700">${item.rank}${getTrophy(item.rank)}</span></td>
                                     <td class="px-4 py-4 font-medium text-slate-700">${item.name}</td>
                                     <td class="px-4 py-4 text-center">${changeHtml}</td>
                                     <td class="px-8 py-4 text-right text-slate-400 font-medium tabular-nums">${prevDisp}</td>
@@ -407,7 +402,7 @@
             const m = getDataByKey(getStorageKey()).find(x => x.name === name);
             if (!m || m.count <= 0) { showToast('无法继续减少'); return; }
             pendingMember = name;
-            document.getElementById('confirmText').innerText = `减少“${name}”的本次统计次数吗？此操作将实时更新排名。`;
+            document.getElementById('confirmText').innerText = `减少“${name}”的本次统计次数吗？`;
             document.getElementById('confirmModal').classList.remove('hidden');
             document.getElementById('confirmActionBtn').onclick = () => {
                 const target = getDataByKey(getStorageKey()).find(x => x.name === pendingMember);
@@ -431,17 +426,23 @@
         }
 
         function selectTab(t) { state.currentTab = t; render(); }
-        
-        function updateWeeks() {
+
+        // 月份切换：重置周数为该月当前周或第1周
+        function updateMonth() {
             state.currentMonth = parseInt(document.getElementById('monthSelect').value);
+            state.currentWeek = (state.currentMonth === new Date().getMonth()) ? getAutoDetectedWeek(state.currentMonth) : 1;
+            refreshWeekOptions();
+        }
+
+        // 刷新周数下拉列表
+        function refreshWeekOptions() {
             const ws = document.getElementById('weekSelect');
             ws.innerHTML = '';
             for (let i = 1; i <= 4; i++) {
                 const opt = document.createElement('option');
                 opt.value = i;
                 opt.text = `第 ${i} 周 (${getWeekDateRange(state.currentMonth, i)})`;
-                // 自动选中逻辑
-                if (i === state.currentWeek) opt.selected = true;
+                opt.selected = (i === state.currentWeek);
                 ws.add(opt);
             }
             render();
@@ -449,38 +450,23 @@
 
         function changeWeek(v) { state.currentWeek = parseInt(v); render(); }
 
-        // 导出 Excel 功能
         function exportToExcel() {
             try {
                 const items = calculateRanks(getDataByKey(getStorageKey()));
                 const filename = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周排名报表.xlsx`;
-                
-                // 准备数据
-                const excelData = items.map(i => ({
-                    "排名": i.rank,
-                    "姓名": i.name,
-                    "总次数": i.count
-                }));
-
-                // 创建工作表
+                const excelData = items.map(i => ({ "排名": i.rank, "姓名": i.name, "总次数": i.count }));
                 const worksheet = XLSX.utils.json_to_sheet(excelData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "排名列表");
-
-                // 下载文件
                 XLSX.writeFile(workbook, filename);
                 showToast('Excel 文件已生成');
-            } catch (error) {
-                console.error(error);
-                showToast('导出 Excel 失败');
-            }
+            } catch (error) { showToast('导出 Excel 失败'); }
         }
 
-        // 导出 TXT 并复制到剪贴板
         function copyToClipboard() {
             const items = calculateRanks(getDataByKey(getStorageKey()));
             let text = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周排名\n`;
-            items.forEach(i => text += `${i.rank}. ${i.name}：${i.count}\n`);
+            items.forEach(i => text += `${i.rank}${getTrophy(i.rank)}. ${i.name}：${i.count}\n`);
             const el = document.createElement('textarea');
             el.value = text; document.body.appendChild(el); el.select();
             document.execCommand('copy'); document.body.removeChild(el);
@@ -488,16 +474,23 @@
         }
 
         window.onload = () => {
+            // 初始化月份下拉框
             const ms = document.getElementById('monthSelect');
+            const now = new Date();
+            const currentM = now.getMonth();
+            
             MONTHS.forEach((m, i) => {
                 const opt = document.createElement('option');
                 opt.value = i; opt.text = m;
-                // 自动选中当前月份
-                if (i === state.currentMonth) opt.selected = true;
+                opt.selected = (i === currentM);
                 ms.add(opt);
             });
-            // 初始化周数下拉菜单
-            updateWeeks();
+
+            // 初始化状态并自动检索时间
+            state.currentMonth = currentM;
+            state.currentWeek = getAutoDetectedWeek(currentM);
+            
+            refreshWeekOptions();
             if (window.lucide) lucide.createIcons();
         };
     </script>
