@@ -177,7 +177,6 @@
         <!-- 弹窗部分 -->
         <div id="securityModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[110] flex items-center justify-center p-4">
             <div class="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
-                <!-- 修正：移除 rotate-3，确保居中 -->
                 <div class="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-8 mx-auto">
                     <i data-lucide="alert-triangle" class="w-8 h-8"></i>
                 </div>
@@ -260,25 +259,17 @@
             };
         }
 
-        // 修正：彻底修复日期计算逻辑，支持跨月连接和所有完整周
         function getWeekDateRange(mIdx, wNum) {
             const year = new Date().getFullYear();
-            // 第一步：找到该月 1 号
             const firstDateOfMonth = new Date(year, mIdx, 1);
-            
-            // 第二步：找到该月第一个周一
             let firstMonday = new Date(firstDateOfMonth);
             while (firstMonday.getDay() !== 1) {
                 firstMonday.setDate(firstMonday.getDate() + 1);
             }
-            
-            // 第三步：根据周数计算起始和结束日期
             const targetMon = new Date(firstMonday);
             targetMon.setDate(firstMonday.getDate() + (wNum - 1) * 7);
-            
             const targetSun = new Date(targetMon);
             targetSun.setDate(targetMon.getDate() + 6);
-            
             return {
                 start: `${targetMon.getMonth() + 1}/${targetMon.getDate()}`,
                 end: `${targetSun.getMonth() + 1}/${targetSun.getDate()}`,
@@ -286,22 +277,18 @@
             };
         }
 
-        // 动态计算该月有多少个“周一”起始的周
         function getWeeksInMonth(mIdx) {
             const year = new Date().getFullYear();
             const firstDate = new Date(year, mIdx, 1);
-            const lastDate = new Date(year, mIdx + 1, 0); // 下个月的第0天即本月最后一天
-            
+            const lastDate = new Date(year, mIdx + 1, 0);
             let firstMonday = new Date(firstDate);
             while (firstMonday.getDay() !== 1) firstMonday.setDate(firstMonday.getDate() + 1);
-            
             let count = 0;
             let tempDate = new Date(firstMonday);
             while (tempDate <= lastDate) {
                 count++;
                 tempDate.setDate(tempDate.getDate() + 7);
             }
-            // 确保至少有 4 周，如果是大型月可能有 5 周
             return Math.max(count, 4);
         }
 
@@ -309,14 +296,11 @@
             const today = new Date();
             const year = today.getFullYear();
             if (today.getMonth() !== mIdx) return 1; 
-            
             const firstDayOfMonth = new Date(year, mIdx, 1);
             let firstMonday = new Date(firstDayOfMonth);
             while (firstMonday.getDay() !== 1) firstMonday.setDate(firstMonday.getDate() + 1);
-            
             const diffInDays = Math.floor((today - firstMonday) / (24 * 60 * 60 * 1000));
             if (diffInDays < 0) return 1; 
-            
             const maxWeeks = getWeeksInMonth(mIdx);
             return Math.min(Math.max(Math.floor(diffInDays / 7) + 1, 1), maxWeeks);
         }
@@ -356,21 +340,16 @@
         function render() {
             const container = document.getElementById('content-area');
             const config = getTabConfig();
-            
             document.documentElement.style.setProperty('--theme-color-hex', config.themeHex);
-            
             const bigTabTitle = document.getElementById('bigTabName');
             const tabIndicator = document.getElementById('tabIndicator');
             bigTabTitle.innerText = config.displayName;
             bigTabTitle.className = `text-5xl font-black tracking-tighter text-slate-900 uppercase italic leading-none mb-2 transition-all duration-500`;
             tabIndicator.className = `w-3 h-12 rounded-full shadow-lg transition-all duration-500 ${config.themeColor}`;
-            
             const rangeInfo = getWeekDateRange(state.currentMonth, state.currentWeek);
             document.getElementById('currentDateRange').innerText = `${MONTHS[state.currentMonth]} 第 ${state.currentWeek} 周 (${rangeInfo.fullString})`;
-
             if (state.view === 'rank') renderRankView(container, config);
             else renderTrendView(container);
-            
             document.getElementById('last-update-time').innerText = `最后更新：${new Date().toLocaleDateString('zh-CN', {month:'long', day:'numeric'})}`;
             if (window.lucide) lucide.createIcons();
             save();
@@ -379,7 +358,6 @@
         function renderRankView(container, config) {
             const items = calculateRanks(getDataByKey(getStorageKey()));
             const showKpi = state.currentTab === 'A1';
-
             container.innerHTML = `
                 <table class="rank-table w-full text-left border-collapse">
                     <thead>
@@ -395,16 +373,13 @@
                         ${items.map(item => {
                             const kpi = ((item.count / 2) * 100).toFixed(0);
                             const badgeClass = item.rank <= 3 ? `badge-${item.rank}` : 'bg-slate-100 text-slate-400';
-                            
                             let trophyHtml = '';
                             if (item.rank === 1) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-gold animate-bounce"></i>';
                             else if (item.rank === 2) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-silver"></i>';
                             else if (item.rank === 3) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-bronze"></i>';
-
                             const starsHtml = item.count > 0 
                                 ? Array(item.count).fill('<i data-lucide="star" class="w-3 h-3 star-icon fill-current"></i>').join('') 
                                 : '';
-
                             return `
                                 <tr class="border-b border-slate-50">
                                     <td class="px-10 py-6">
@@ -462,8 +437,20 @@
 
         function renderTrendView(container) {
             const currentRanks = calculateRanks(getDataByKey(getStorageKey()));
-            const prevWeek = state.currentWeek > 1 ? state.currentWeek - 1 : 1;
-            const prevRanks = state.currentWeek > 1 ? calculateRanks(getDataByKey(getStorageKey(state.currentMonth, prevWeek))) : [];
+            
+            let prevMonth = state.currentMonth;
+            let prevWeek = state.currentWeek - 1;
+
+            // 跨月寻找上周逻辑
+            if (prevWeek < 1) {
+                prevMonth = state.currentMonth - 1;
+                if (prevMonth < 0) {
+                    prevMonth = 11; 
+                }
+                prevWeek = getWeeksInMonth(prevMonth);
+            }
+
+            const prevRanks = calculateRanks(getDataByKey(getStorageKey(prevMonth, prevWeek, state.currentTab)));
 
             container.innerHTML = `
                 <table class="trend-table rank-table w-full text-left border-collapse">
@@ -479,15 +466,24 @@
                         ${currentRanks.map(item => {
                             const prevItem = prevRanks.find(p => p.name === item.name);
                             let changeHtml = '';
-                            let prevDisp = prevItem ? prevItem.rank : '新晋';
+                            
+                            // 默认显示为 "-" 标识无变化
+                            const NO_CHANGE = `<span class="text-slate-300 font-black tracking-widest text-lg">—</span>`;
+                            let prevDisp = '-';
 
-                            if (!prevItem || (state.currentWeek === 1 && prevItem.count === 0)) {
-                                changeHtml = `<span class="bg-blue-600 text-white px-3 py-1 rounded-full text-[9px] font-black italic shadow-md shadow-blue-100">新晋上榜</span>`;
-                            } else {
+                            if (prevItem) {
+                                prevDisp = `#${prevItem.rank}`;
                                 const diff = prevItem.rank - item.rank;
-                                if (diff > 0) changeHtml = `<div class="flex flex-col items-center"><i data-lucide="chevron-up" class="w-7 h-7 text-green-500"></i><span class="text-green-600 font-black text-[13px]">+${diff}</span></div>`;
-                                else if (diff < 0) changeHtml = `<div class="flex flex-col items-center"><i data-lucide="chevron-down" class="w-7 h-7 text-red-400"></i><span class="text-red-500 font-black text-[13px]">${diff}</span></div>`;
-                                else changeHtml = `<span class="text-slate-300 font-black tracking-widest text-lg">—</span>`;
+                                if (diff > 0) {
+                                    changeHtml = `<div class="flex flex-col items-center"><i data-lucide="chevron-up" class="w-7 h-7 text-green-500"></i><span class="text-green-600 font-black text-[13px]">+${diff}</span></div>`;
+                                } else if (diff < 0) {
+                                    changeHtml = `<div class="flex flex-col items-center"><i data-lucide="chevron-down" class="w-7 h-7 text-red-400"></i><span class="text-red-500 font-black text-[13px]">${diff}</span></div>`;
+                                } else {
+                                    changeHtml = NO_CHANGE;
+                                }
+                            } else {
+                                // 理论上 FIXED_MEMBERS 始终存在，这里作为容错处理
+                                changeHtml = NO_CHANGE;
                             }
 
                             return `
@@ -504,7 +500,7 @@
                                         <div class="flex justify-center">${changeHtml}</div>
                                     </td>
                                     <td class="px-10 py-8 text-right">
-                                        <span class="text-slate-400 font-black tabular-nums text-sm">#${prevDisp}</span>
+                                        <span class="text-slate-400 font-black tabular-nums text-sm">${prevDisp}</span>
                                     </td>
                                 </tr>
                             `;
@@ -528,10 +524,8 @@
             const m = getDataByKey(getStorageKey()).find(x => x.name === name);
             if (!m || m.count <= 0) { showToast('警告: 数值已为0'); return; }
             pendingMember = name;
-            
             const isA1orZYF = state.currentTab === 'A1' || state.currentTab === 'ZYF';
             const actionVerb = isA1orZYF ? "次数" : "记录";
-            
             document.getElementById('confirmText').innerText = `您正在减少“${name}”的${actionVerb}。此操作将直接影响当前排名。`;
             document.getElementById('confirmModal').classList.remove('hidden');
             document.getElementById('confirmActionBtn').onclick = () => {
@@ -562,7 +556,6 @@
             const ws = document.getElementById('weekSelect');
             ws.innerHTML = '';
             const totalWeeks = getWeeksInMonth(state.currentMonth);
-            
             for (let i = 1; i <= totalWeeks; i++) {
                 const opt = document.createElement('option');
                 opt.value = i;
