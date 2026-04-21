@@ -188,7 +188,7 @@
             </div>
         </div>
 
-        <!-- 确认减少次数的弹窗 - 已调整为更小更精致的尺寸 -->
+        <!-- 确认减少次数的弹窗 -->
         <div id="confirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] hidden flex items-center justify-center p-6">
             <div class="bg-white rounded-[2rem] p-8 max-w-[340px] w-full shadow-2xl border border-white/20">
                 <div class="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-5 mx-auto">
@@ -229,9 +229,9 @@
                     totalHeader: '意向数', 
                     btnAdd: '添加意向', 
                     displayName: '伊赫莱NP榜单',
-                    themeColor: 'bg-amber-500',
-                    themeHex: '#f59e0b',
-                    grad: 'from-amber-500 to-orange-600',
+                    themeColor: 'bg-purple-600', // 调换为紫色
+                    themeHex: '#9333ea',
+                    grad: 'from-purple-600 to-fuchsia-700',
                     hasMonthly: true
                 };
             } else if (state.currentTab === 'HST') {
@@ -239,9 +239,9 @@
                     totalHeader: '意向数', 
                     btnAdd: '添加意向', 
                     displayName: '赫双妥榜单',
-                    themeColor: 'bg-purple-600',
-                    themeHex: '#9333ea',
-                    grad: 'from-purple-600 to-fuchsia-700',
+                    themeColor: 'bg-amber-500', // 调换为橙色
+                    themeHex: '#f59e0b',
+                    grad: 'from-amber-500 to-orange-600',
                     hasMonthly: true
                 };
             } else if (state.currentTab === 'ZYF') {
