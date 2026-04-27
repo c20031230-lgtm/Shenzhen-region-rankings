@@ -18,9 +18,9 @@
             color: #0f172a;
         }
 
-        .col-rank { width: 100px; min-width: 100px; }
+        .col-rank { width: 120px; min-width: 120px; }
         .col-name { width: 200px; }
-        .col-total { width: 160px; }
+        .col-total { width: 180px; } /* 略微放宽统计列，给星星更多空间 */
         .col-target { width: 100px; }
         .col-progress { width: auto; }
         .col-action { width: 180px; text-align: right; }
@@ -99,15 +99,6 @@
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        .pulse-red {
-            animation: pulseRed 2s infinite;
-        }
-        @keyframes pulseRed {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
         .btn-shine {
             position: relative;
             overflow: hidden;
@@ -146,7 +137,7 @@
                         </div>
                         <div>
                             <p class="text-[14px] font-black text-slate-800 mb-1">本地存储机制</p>
-                            <p class="text-[12px] text-slate-500 leading-relaxed font-medium">数据自动保存在当前浏览器。更换电脑或浏览器将无法看到此前的更改。</p>
+                            <p class="text-[12px] text-slate-500 leading-relaxed font-medium">数据自动保存在当前浏览器。更换电脑、浏览器或使用<span class="text-red-500 font-bold">无痕模式</span>将无法共享或保存此前的更改。</p>
                         </div>
                     </div>
                 </div>
@@ -163,16 +154,10 @@
         <div class="glass-card rounded-[3rem] p-12 max-w-[420px] w-full modal-container border-t-4 border-red-500">
             <div class="flex flex-col items-center text-center">
                 <h3 class="text-2xl font-black text-slate-900 mb-4 tracking-tight">确认减少？</h3>
-                <div id="confirmText" class="w-full bg-red-50/50 py-5 px-8 rounded-3xl border border-red-100/50 mb-10 text-slate-600 font-bold italic">
-                    <!-- JS 填充内容 -->
-                </div>
+                <div id="confirmText" class="w-full bg-red-50/50 py-5 px-8 rounded-3xl border border-red-100/50 mb-10 text-slate-600 font-bold italic"></div>
                 <div class="flex flex-col w-full gap-4">
-                    <button id="confirmActionBtn" class="btn-shine bg-red-500 w-full py-5 rounded-[1.5rem] text-white font-black text-[16px] tracking-wider transition-all active:scale-95">
-                        确认扣减
-                    </button>
-                    <button onclick="closeConfirm()" class="w-full py-5 rounded-[1.5rem] bg-slate-100 text-slate-500 font-bold text-[15px] hover:bg-slate-200 transition-all active:scale-95">
-                        取消
-                    </button>
+                    <button id="confirmActionBtn" class="btn-shine bg-red-500 w-full py-5 rounded-[1.5rem] text-white font-black text-[16px] tracking-wider transition-all active:scale-95">确认扣减</button>
+                    <button onclick="closeConfirm()" class="w-full py-5 rounded-[1.5rem] bg-slate-100 text-slate-500 font-bold text-[15px] hover:bg-slate-200 transition-all active:scale-95">取消</button>
                 </div>
             </div>
         </div>
@@ -191,8 +176,7 @@
                     </select>
                 </div>
                 <div class="h-6 w-px bg-slate-200 mx-1"></div>
-                <select id="monthSelect" onchange="updateMonth()" class="bg-white border border-slate-200 text-slate-600 py-2 pl-3 pr-8 rounded-xl font-semibold focus:ring-4 focus:ring-slate-100 transition-all text-sm min-w-[120px]">
-                </select>
+                <select id="monthSelect" onchange="updateMonth()" class="bg-white border border-slate-200 text-slate-600 py-2 pl-3 pr-8 rounded-xl font-semibold focus:ring-4 focus:ring-slate-100 transition-all text-sm min-w-[120px]"></select>
             </div>
             <div class="ml-auto flex items-center gap-3">
                 <button onclick="copyToClipboard()" class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all text-sm shadow-lg active:scale-95">
@@ -232,7 +216,6 @@
                         <span class="flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4"></i> 月度趋势</span>
                     </span>
                 </div>
-                <!-- 更新后的最后更新时间状态栏 -->
                 <div class="hidden sm:flex items-center gap-2 text-slate-400 text-[12px] font-black italic">
                     <span class="w-2 h-2 rounded-full bg-green-500"></span>
                     <span>最后更新时间：<span id="last-update-time">----年--月--日</span></span>
@@ -261,28 +244,36 @@
             view: 'rank',
             data: {},
             targets: {},
-            lastUpdated: '' // 新增：最后更新时间
+            lastUpdated: ''
         };
 
-        function closeNotice() {
-            document.getElementById('noticeModal').classList.add('hidden');
-        }
+        function closeNotice() { document.getElementById('noticeModal').classList.add('hidden'); }
 
+        /**
+         * 修改星星渲染逻辑：
+         * 1. 上限改为 11 个（11个及以上显示 × N）
+         * 2. 为了保证 10 个星星不换行，稍微缩小星星尺寸并去掉间距
+         */
         function renderStars(count) {
             if (count <= 0) return '';
-            if (count > 7) {
+            
+            // 当达到 11 个及以上时，显示 × N
+            if (count >= 11) {
                 return `
                     <div class="flex items-center gap-1.5 star-animate">
                         <i data-lucide="star" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
-                        <span class="text-[11px] font-black text-amber-500 whitespace-nowrap">x ${count} 达成卓越</span>
-                    </div>
-                `;
+                        <span class="text-[11px] font-black text-amber-500 whitespace-nowrap italic">x ${count}</span>
+                    </div>`;
             }
+
+            // 1-10 个星星：通过缩小尺寸和设置 flex-nowrap 保证不换行
             let stars = '';
             for (let i = 0; i < count; i++) {
-                stars += `<i data-lucide="star" class="w-3.5 h-3.5 text-amber-400 fill-amber-400 star-animate"></i>`;
+                // w-3 (12px) 尺寸比之前的 w-3.5 略小，确保 10 个能挤在列宽内
+                stars += `<i data-lucide="star" class="w-3 h-3 text-amber-400 fill-amber-400 star-animate"></i>`;
             }
-            return `<div class="flex items-center gap-0.5 flex-wrap max-w-[120px]">${stars}</div>`;
+            // gap-0 移除星星间距，flex-nowrap 强制不换行
+            return `<div class="flex items-center gap-0 flex-nowrap min-w-max">${stars}</div>`;
         }
 
         function getStorageKey(m = state.currentMonth, t = state.currentTab) { return `m-${m}-t-${t}`; }
@@ -309,11 +300,7 @@
 
         function updateTimestamp() {
             const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            state.lastUpdated = `${year}年${month}月${day}日`;
-            document.getElementById('last-update-time').innerText = state.lastUpdated;
+            state.lastUpdated = `${now.getFullYear()}年${String(now.getMonth() + 1).padStart(2, '0')}月${String(now.getDate()).padStart(2, '0')}日`;
         }
 
         function render() {
@@ -338,12 +325,12 @@
                 <table class="rank-table w-full text-left border-collapse">
                     <thead>
                         <tr class="text-slate-400 text-[11px] border-b border-slate-50 bg-slate-50/50 uppercase tracking-wider">
-                            <th class="col-rank px-10 py-5 font-black whitespace-nowrap">排名</th>
-                            <th class="col-name px-4 py-5 font-black whitespace-nowrap">成员</th>
-                            <th class="col-total px-4 py-5 font-black whitespace-nowrap">${config.header}</th>
-                            <th class="col-target px-4 py-5 font-black whitespace-nowrap">目标</th>
-                            <th class="col-progress px-4 py-5 font-black whitespace-nowrap">进度</th>
-                            <th class="col-action px-10 py-5 font-black text-right whitespace-nowrap">操作</th>
+                            <th class="col-rank px-10 py-5 font-black">排名</th>
+                            <th class="col-name px-4 py-5 font-black">成员</th>
+                            <th class="col-total px-4 py-5 font-black">${config.header}</th>
+                            <th class="col-target px-4 py-5 font-black">目标</th>
+                            <th class="col-progress px-4 py-5 font-black">进度</th>
+                            <th class="col-action px-10 py-5 font-black text-right">操作</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm">
@@ -361,30 +348,23 @@
 
                             return `
                                 <tr class="border-b border-slate-50 transition-colors">
-                                    <td class="col-rank px-10 py-6">
-                                        <div class="w-8 h-8 rounded-lg ${badgeClass} flex items-center justify-center font-black text-xs shadow-sm">${item.rank}</div>
-                                    </td>
+                                    <td class="col-rank px-10 py-6"><div class="w-8 h-8 rounded-lg ${badgeClass} flex items-center justify-center font-black text-xs shadow-sm">${item.rank}</div></td>
                                     <td class="col-name px-4 py-6">
                                         <div class="flex items-center gap-3 overflow-hidden">
                                             <div class="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br ${config.grad} flex items-center justify-center text-[10px] text-white font-black border-2 border-white shadow-sm">${item.name.slice(0,1)}</div>
                                             <div class="flex items-center gap-2 truncate pr-2">
                                                 <span class="font-bold text-slate-700 truncate">${item.name}</span>
-                                                <span class="flex items-center justify-center w-5 h-5">
-                                                    ${trophyHtml}
-                                                </span>
+                                                <span class="flex items-center justify-center w-5 h-5">${trophyHtml}</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="col-total px-4 py-6">
-                                        <div class="flex flex-col gap-1.5">
+                                        <div class="flex flex-col gap-1.5 min-w-[130px]">
                                             <span class="font-black text-2xl text-slate-900 tabular-nums leading-none">${item.count}</span>
                                             ${renderStars(item.count)}
                                         </div>
                                     </td>
-                                    <td class="col-target px-4 py-6">
-                                        <input type="number" value="${targetVal}" onchange="updateTarget('${item.name}', this.value)"
-                                            class="w-16 bg-slate-50 border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-slate-500 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none transition-all text-center">
-                                    </td>
+                                    <td class="col-target px-4 py-6"><input type="number" value="${targetVal}" onchange="updateTarget('${item.name}', this.value)" class="w-16 bg-slate-50 border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-slate-500 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none text-center"></td>
                                     <td class="col-progress px-4 py-6">
                                         <div class="flex flex-col gap-1.5 pr-4">
                                             <span class="font-black text-[12px] ${isCompleted ? 'text-green-600' : 'text-slate-400'}">${percent}%</span>
@@ -393,22 +373,11 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="col-action px-10 py-6">
-                                        <div class="flex justify-end items-center gap-2">
-                                            <button onclick="increment('${item.name}')" class="px-3 py-2 ${config.color} text-white rounded-xl text-[10px] font-black hover:scale-105 transition-all active:scale-95 flex items-center gap-1">
-                                                <i data-lucide="plus" class="w-3 h-3"></i> ${config.btn}
-                                            </button>
-                                            <button onclick="askDecrement('${item.name}')" class="p-2 text-slate-300 hover:text-red-400 transition-colors">
-                                                <i data-lucide="minus-circle" class="w-4 h-4"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
+                                    <td class="col-action px-10 py-6"><div class="flex justify-end items-center gap-2"><button onclick="increment('${item.name}')" class="px-3 py-2 ${config.color} text-white rounded-xl text-[10px] font-black hover:scale-105 transition-all active:scale-95 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> ${config.btn}</button><button onclick="askDecrement('${item.name}')" class="p-2 text-slate-300 hover:text-red-400 transition-colors"><i data-lucide="minus-circle" class="w-4 h-4"></i></button></div></td>
+                                </tr>`;
                         }).join('')}
                     </tbody>
-                </table>
-            `;
+                </table>`;
         }
 
         function renderTrendView(container, config) {
@@ -426,6 +395,7 @@
                             <th class="px-4 py-5 text-center">当前排名</th>
                             <th class="px-4 py-5 text-center">当月数值</th>
                             <th class="px-4 py-5 text-center">上月排名</th>
+                            <th class="px-4 py-5 text-center">上月数值</th>
                             <th class="px-10 py-5 text-right">趋势</th>
                         </tr>
                     </thead>
@@ -445,13 +415,12 @@
                                     <td class="px-4 py-8 text-center"><span class="font-black text-xl italic text-slate-900">#${item.rank}</span></td>
                                     <td class="px-4 py-8 text-center font-black tabular-nums">${item.count}</td>
                                     <td class="px-4 py-8 text-center text-slate-400 font-bold">#${prevItem ? prevItem.rank : '--'}</td>
+                                    <td class="px-4 py-8 text-center text-slate-500 font-medium">${prevItem ? prevItem.count : '--'}</td>
                                     <td class="px-10 py-8 text-right">${changeHtml}</td>
-                                </tr>
-                            `;
+                                </tr>`;
                         }).join('')}
                     </tbody>
-                </table>
-            `;
+                </table>`;
         }
 
         function updateTarget(name, val) {
@@ -463,12 +432,7 @@
 
         function increment(name) {
             const m = getDataByKey(getStorageKey()).find(x => x.name === name);
-            if (m) { 
-                m.count++; 
-                updateTimestamp();
-                render(); 
-                showToast(`${name} 数值+1`); 
-            }
+            if (m) { m.count++; updateTimestamp(); render(); showToast(`${name} 数值+1`); }
         }
 
         let pendingMember = null;
@@ -480,12 +444,7 @@
             document.getElementById('confirmModal').classList.remove('hidden');
             document.getElementById('confirmActionBtn').onclick = () => {
                 const target = getDataByKey(getStorageKey()).find(x => x.name === pendingMember);
-                if (target) { 
-                    target.count--; 
-                    updateTimestamp();
-                    render(); 
-                    showToast(`已成功扣减 ${pendingMember}`); 
-                }
+                if (target) { target.count--; updateTimestamp(); render(); showToast(`已成功扣减 ${pendingMember}`); }
                 closeConfirm();
             };
         }
@@ -493,16 +452,11 @@
         function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); }
         
         function save() { 
-            localStorage.setItem('rankings_v12', JSON.stringify({ 
-                data: state.data, 
-                targets: state.targets,
-                lastUpdated: state.lastUpdated 
-            })); 
+            localStorage.setItem('rankings_v12', JSON.stringify({ data: state.data, targets: state.targets, lastUpdated: state.lastUpdated })); 
         }
 
         function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg; t.style.opacity = '1';
+            const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = '1';
             setTimeout(() => t.style.opacity = '0', 2000);
         }
 
@@ -512,26 +466,15 @@
         function copyToClipboard() {
             const items = calculateRanks(getDataByKey(getStorageKey()));
             const config = TAB_CONFIGS[state.currentTab];
-            const medals = { 1: '🏆', 2: '🥈', 3: '🥉' };
-            
-            let text = `🌟 【${config.name}】${MONTHS[state.currentMonth]} 实时榜单排名\n`;
-            text += `--------------------------------\n`;
-            
+            let text = `🌟 【${config.name}】${MONTHS[state.currentMonth]} 实时榜单排名\n--------------------------------\n`;
             items.forEach(i => {
-                const medal = medals[i.rank] || '';
+                const medal = { 1: '🏆', 2: '🥈', 3: '🥉' }[i.rank] || '';
                 text += `#${i.rank}${medal}. ${i.name}：累计${config.header} ${i.count}\n`;
             });
-            
-            text += `--------------------------------\n`;
-            text += `更新时间：${state.lastUpdated || '--'}`;
-
-            const el = document.createElement('textarea'); 
-            el.value = text; 
-            document.body.appendChild(el); 
-            el.select();
-            document.execCommand('copy'); 
-            document.body.removeChild(el);
-            showToast('已复制带奖牌的榜单内容');
+            text += `--------------------------------\n更新时间：${state.lastUpdated || '--'}`;
+            const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select();
+            document.execCommand('copy'); document.body.removeChild(el);
+            showToast('已复制榜单内容');
         }
 
         function exportAllToExcel() {
@@ -539,13 +482,11 @@
             ['A1', 'NP', 'HST', 'ZYF'].forEach(tabId => {
                 const config = TAB_CONFIGS[tabId];
                 const items = calculateRanks(getDataByKey(getStorageKey(state.currentMonth, tabId)));
-                allData.push([config.name]);
-                allData.push(['排名', '成员', config.header, '目标', '进度']);
+                allData.push([config.name], ['排名', '成员', config.header, '目标', '进度']);
                 items.forEach(item => {
                     const targetKey = `${tabId}-${state.currentMonth}-${item.name}`;
                     const targetVal = state.targets[targetKey] || 0;
-                    const percent = targetVal > 0 ? (item.count / targetVal * 100).toFixed(1) + '%' : '0%';
-                    allData.push([item.rank, item.name, item.count, targetVal, percent]);
+                    allData.push([item.rank, item.name, item.count, targetVal, targetVal > 0 ? (item.count / targetVal * 100).toFixed(1) + '%' : '0%']);
                 });
                 allData.push([]);
             });
@@ -556,7 +497,6 @@
         }
 
         window.onload = () => {
-            const ms = document.getElementById('monthSelect');
             const stored = localStorage.getItem('rankings_v12');
             if (stored) {
                 const parsed = JSON.parse(stored);
@@ -564,9 +504,9 @@
                 state.targets = parsed.targets || {};
                 state.lastUpdated = parsed.lastUpdated || '';
             }
+            const ms = document.getElementById('monthSelect');
             MONTHS.forEach((m, i) => {
-                const opt = document.createElement('option');
-                opt.value = i; opt.text = m;
+                const opt = new Option(m, i);
                 if (i === state.currentMonth) opt.selected = true;
                 ms.add(opt);
             });
