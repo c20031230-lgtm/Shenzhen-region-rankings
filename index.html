@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>深圳地区榜单排名</title>
+    <title>深圳地区月度榜单排名</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@0.321.0/dist/umd/lucide.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Inter:wght@400;600;800&display=swap');
@@ -18,44 +18,46 @@
             color: #0f172a;
         }
 
-        /* 排名列表专用列宽 */
-        .col-rank { width: 110px; }
-        .col-name { width: 220px; }
-        .col-kpi { width: 150px; } 
-        .col-total { min-width: 250px; } 
-        .col-action { width: 220px; text-align: right; }
+        /* 固定列宽 - 确保排名列宽足够，防止文字竖排 */
+        .col-rank { width: 100px; min-width: 100px; }
+        .col-name { width: 200px; }
+        .col-total { width: 160px; }
+        .col-target { width: 100px; }
+        .col-progress { width: auto; }
+        .col-action { width: 180px; text-align: right; }
 
-        /* 趋势页面均匀化布局 */
-        .trend-table .col-t-rank { width: 20%; }
-        .trend-table .col-t-name { width: 30%; }
-        .trend-table .col-t-trend { width: 30%; }
-        .trend-table .col-t-prev { width: 20%; }
-        
-        .rank-table tr {
-            transition: background-color 0.2s ease;
+        .rank-table {
+            table-layout: fixed;
+            width: 100%;
         }
+
         .rank-table tbody tr:hover {
             background-color: rgba(241, 245, 249, 0.9);
         }
 
-        .star-icon {
-            color: #fbbf24;
-            filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.4));
-            margin-left: 1px;
-            font-size: 14px;
+        .star-animate {
+            animation: starPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        .trophy-gold { color: #fbbf24; filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.4)); }
-        .trophy-silver { color: #94a3b8; filter: drop-shadow(0 0 8px rgba(148, 163, 184, 0.4)); }
-        .trophy-bronze { color: #d97706; filter: drop-shadow(0 0 8px rgba(217, 119, 6, 0.4)); }
-
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.75rem center;
-            background-size: 1rem;
+        @keyframes starPop {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
+
+        .trophy-float {
+            animation: floating 2s ease-in-out infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-1.5px); }
+        }
+
+        .trophy-gold { color: #fbbf24; filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.3)); }
+        .trophy-silver { color: #94a3b8; filter: drop-shadow(0 0 2px rgba(148, 163, 184, 0.3)); }
+        .trophy-bronze { color: #d97706; filter: drop-shadow(0 0 2px rgba(217, 119, 6, 0.3)); }
 
         .nav-tab {
             position: relative;
@@ -67,16 +69,11 @@
             font-size: 0.875rem;
             transition: all 0.3s;
         }
-        .nav-tab.active {
-            color: var(--theme-color-hex, #2563eb);
-        }
+        .nav-tab.active { color: var(--theme-color-hex, #2563eb); }
         .nav-tab.active::after {
             content: '';
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
+            bottom: 0; left: 0; width: 100%; height: 3px;
             background: var(--theme-color-hex, #2563eb);
             border-radius: 3px 3px 0 0;
         }
@@ -85,16 +82,128 @@
         .badge-2 { background: linear-gradient(135deg, #94a3b8 0%, #475569 100%); color: white; }
         .badge-3 { background: linear-gradient(135deg, #d97706 0%, #92400e 100%); color: white; }
 
-        .title-bg {
-            background-color: #ffffff;
-            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(241, 245, 249, 0.5) 10px, rgba(241, 245, 249, 0.5) 20px);
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* --- 弹窗与确认界面专属动效 --- */
+        .modal-overlay {
+            backdrop-filter: blur(12px);
+            transition: all 0.4s ease;
+        }
+        
+        .modal-container {
+            animation: modalScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 40px 80px -15px rgba(0, 0, 0, 0.25);
+        }
+
+        @keyframes modalScaleUp {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .pulse-red {
+            animation: pulseRed 2s infinite;
+        }
+        @keyframes pulseRed {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .btn-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-shine::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: rotate(45deg);
+            transition: 0.6s;
+        }
+        .btn-shine:hover::after { left: 120%; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(255, 255, 255, 1);
         }
     </style>
 </head>
 <body class="min-h-screen antialiased">
+    <!-- 优化后的使用须知弹窗 -->
+    <div id="noticeModal" class="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-slate-900/40">
+        <div class="glass-card rounded-[3rem] p-10 max-w-[500px] w-full modal-container relative overflow-hidden">
+            <!-- 顶部装饰条 -->
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+            
+            <div class="flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 shadow-inner rotate-3">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-blue-600"></i>
+                </div>
+                <h3 class="text-3xl font-black text-slate-900 mb-2 tracking-tight">数据安全与存储提示</h3>
+                <p class="text-slate-400 text-sm font-medium mb-8">为了保障您的使用体验，请务必了解以下须知：</p>
+                
+                <div class="w-full space-y-4 mb-10 text-left">
+                    <div class="group flex gap-5 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:scale-[1.02]">
+                        <div class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center shrink-0 border border-slate-50">
+                            <i data-lucide="hard-drive" class="w-6 h-6 text-blue-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-[14px] font-black text-slate-800 mb-1">浏览器本地存储</p>
+                            <p class="text-[12px] text-slate-500 leading-relaxed font-medium">数据仅保存在您<span class="text-blue-600 font-bold">当前浏览器</span>中。更换设备或清除浏览器缓存会导致所有榜单数据重置且无法找回。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="group flex gap-5 p-5 rounded-[2rem] bg-red-50/30 border border-red-50 transition-all hover:bg-white hover:shadow-xl hover:shadow-red-200/30 hover:scale-[1.02]">
+                        <div class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center shrink-0 border border-red-50">
+                            <i data-lucide="ghost" class="w-6 h-6 text-red-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-[14px] font-black text-red-600 mb-1">无痕/私密模式限制</p>
+                            <p class="text-[12px] text-slate-500 leading-relaxed font-medium">在无痕模式下，数据<span class="text-red-500 font-bold">无法被共享或持久保存</span>。关闭窗口后，所有录入的数据将立即消失。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="closeNotice()" class="btn-shine w-full py-5 rounded-[1.8rem] bg-slate-900 text-white font-black text-[16px] tracking-widest hover:scale-[1.02] active:scale-95 transition-all duration-300 flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/20">
+                    我知道了，开始使用
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 优化后的确认削减界面 -->
+    <div id="confirmModal" class="fixed inset-0 z-[1001] hidden flex items-center justify-center p-6 modal-overlay bg-slate-950/80">
+        <div class="glass-card rounded-[3rem] p-12 max-w-[420px] w-full modal-container border-t-4 border-red-500">
+            <div class="flex flex-col items-center text-center">
+                <!-- 呼吸灯警告图标 -->
+                <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-8 pulse-red">
+                    <i data-lucide="alert-circle" class="w-10 h-10 text-red-600"></i>
+                </div>
+                
+                <h3 class="text-2xl font-black text-slate-900 mb-4 tracking-tight">确认减少数值？</h3>
+                
+                <div id="confirmText" class="w-full bg-red-50/50 py-5 px-8 rounded-3xl border border-red-100/50 mb-10">
+                    <!-- JS 填充内容 -->
+                </div>
+
+                <div class="flex flex-col w-full gap-4">
+                    <button id="confirmActionBtn" class="btn-shine bg-gradient-to-r from-red-600 to-rose-700 w-full py-5 rounded-[1.5rem] text-white font-black text-[16px] tracking-wider shadow-xl shadow-red-200 transition-all active:scale-95">
+                        确认扣减
+                    </button>
+                    <button onclick="closeConfirm()" class="w-full py-5 rounded-[1.5rem] bg-slate-100 text-slate-500 font-bold text-[15px] hover:bg-slate-200 transition-all active:scale-95">
+                        暂不修改
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="app" class="p-4 md:p-8 lg:p-12">
         <!-- 顶部控制栏 -->
-        <div class="max-w-6xl mx-auto flex flex-wrap items-center gap-4 mb-6 bg-white/90 p-4 rounded-3xl shadow-xl shadow-slate-200/50 border border-white/60 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center gap-4 mb-6 bg-white/90 p-4 rounded-3xl shadow-xl border border-white/60 backdrop-blur-md">
             <div class="flex items-center gap-2">
                 <div class="flex bg-slate-100 p-1 rounded-xl">
                     <select id="tabSelect" onchange="selectTab(this.value)" class="bg-transparent border-none text-slate-700 py-2 pl-3 pr-8 rounded-lg font-bold focus:outline-none transition-all text-sm cursor-pointer hover:bg-white/50">
@@ -105,215 +214,99 @@
                     </select>
                 </div>
                 <div class="h-6 w-px bg-slate-200 mx-1"></div>
-                <select id="monthSelect" onchange="updateMonth()" class="bg-white border border-slate-200 text-slate-600 py-2 pl-3 pr-8 rounded-xl font-semibold focus:ring-4 focus:ring-slate-100 transition-all text-sm">
-                </select>
-                <select id="weekSelect" onchange="changeWeek(this.value)" class="bg-white border border-slate-200 text-slate-600 py-2 pl-3 pr-8 rounded-xl font-semibold focus:ring-4 focus:ring-slate-100 transition-all text-sm min-w-[170px]">
+                <select id="monthSelect" onchange="updateMonth()" class="bg-white border border-slate-200 text-slate-600 py-2 pl-3 pr-8 rounded-xl font-semibold focus:ring-4 focus:ring-slate-100 transition-all text-sm min-w-[120px]">
                 </select>
             </div>
-
             <div class="ml-auto flex items-center gap-3">
-                <button onclick="exportToExcel()" class="bg-white border border-slate-200 hover:border-green-300 hover:bg-green-50 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all text-sm shadow-sm group">
-                    <i data-lucide="file-spreadsheet" class="w-4 h-4 text-green-600 group-hover:scale-110 transition-transform"></i> 导出 Excel
+                <button onclick="copyToClipboard()" class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all text-sm shadow-lg active:scale-95">
+                    <i data-lucide="share-2" class="w-4 h-4"></i> 复制榜单
                 </button>
-                <button onclick="copyToClipboard()" class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all text-sm shadow-lg shadow-slate-900/20 active:scale-95">
-                    <i data-lucide="share-2" class="w-4 h-4"></i> 导出 TXT
+                <button onclick="exportAllToExcel()" class="bg-white border border-slate-200 hover:border-green-300 hover:bg-green-50 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all text-sm shadow-sm">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4 text-green-600"></i> 导出全榜单
                 </button>
             </div>
         </div>
 
-        <!-- 榜单大标题显示区 -->
-        <div class="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
+        <!-- 标题区 -->
+        <div class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
             <div class="flex items-center gap-5">
-                <div id="tabIndicator" class="w-3 h-12 rounded-full bg-blue-600 shadow-lg transition-colors duration-500"></div>
+                <div id="tabIndicator" class="w-3 h-12 rounded-full bg-blue-600 shadow-lg"></div>
                 <div>
                     <h1 id="bigTabName" class="text-5xl font-black tracking-tighter text-slate-900 uppercase italic leading-none mb-2">A1 榜单</h1>
                     <p class="text-slate-400 font-bold text-xs tracking-widest uppercase flex items-center gap-2">
-                        <i data-lucide="layout-dashboard" class="w-3 h-3"></i> 
-                        REAL-TIME RANKING SYSTEM
+                        <i data-lucide="award" class="w-3 h-3 text-slate-400"></i> 
+                        PERFORMANCE STAR BOARD
                     </p>
                 </div>
             </div>
             <div class="flex flex-col items-end">
-                <span id="currentDateRange" class="bg-white/80 border border-slate-200 px-4 py-1.5 rounded-2xl text-[12px] font-black text-slate-600 shadow-sm backdrop-blur-sm">---</span>
+                <span id="currentMonthLabel" class="bg-white/80 border border-slate-200 px-4 py-1.5 rounded-2xl text-[14px] font-black text-slate-700 shadow-sm backdrop-blur-sm">---</span>
             </div>
         </div>
 
         <!-- 数据面板 -->
-        <div class="max-w-6xl mx-auto bg-white rounded-[2rem] shadow-2xl shadow-slate-300/50 border border-slate-200 overflow-hidden">
-            <div class="flex items-center justify-between border-b border-slate-100 px-10 title-bg">
+        <div class="max-w-7xl mx-auto bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-100 px-10 bg-white">
                 <div class="flex">
                     <span id="nav-rank" onclick="switchView('rank')" class="nav-tab active">
-                        <span class="flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> 排名列表</span>
+                        <span class="flex items-center gap-2"><i data-lucide="layout-list" class="w-4 h-4"></i> 排名列表</span>
                     </span>
                     <span id="nav-trend" onclick="switchView('trend')" class="nav-tab">
-                        <span class="flex items-center gap-2"><i data-lucide="line-chart" class="w-4 h-4"></i> 数据趋势</span>
-                    </span>
-                    <span id="nav-monthly" onclick="switchView('monthly')" class="nav-tab hidden">
-                        <span class="flex items-center gap-2"><i data-lucide="calendar-check-2" class="w-4 h-4"></i> 月度概况</span>
+                        <span class="flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4"></i> 月度趋势</span>
                     </span>
                 </div>
-                <div class="hidden sm:flex items-center gap-2 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+                <div class="hidden sm:flex items-center gap-2 text-slate-400 text-[11px] font-bold">
                     <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span id="last-update-time">最后更新：----</span>
+                    <span id="last-update-time">SYNCED LIVE</span>
                 </div>
             </div>
-
-            <div id="content-area" class="overflow-x-auto min-h-[400px]">
-                <!-- 内容由 JavaScript 动态填充 -->
-            </div>
-        </div>
-
-        <!-- 页脚 -->
-        <div class="max-w-6xl mx-auto mt-10 text-center">
-            <p class="text-slate-400 text-[10px] font-bold tracking-widest uppercase">© 2024 Productivity Dashboard · Internal Use Only</p>
-        </div>
-
-        <!-- 弹窗部分 -->
-        <div id="securityModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[110] flex items-center justify-center p-4">
-            <div class="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
-                <div class="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-8 mx-auto">
-                    <i data-lucide="alert-triangle" class="w-8 h-8"></i>
-                </div>
-                <h3 class="text-2xl font-black text-slate-900 mb-4 text-center">重要数据提醒</h3>
-                <div class="text-slate-500 text-sm space-y-4 mb-8 leading-relaxed">
-                    <p>数据仅保存在您的浏览器本地，请勿清理缓存或更换浏览器。</p>
-                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                        <p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">防止丢失</p>
-                        <p class="text-xs text-slate-600">为了防止数据意外丢失，我们强烈建议您<span class="text-blue-600">定期点击“导出 Excel”</span>进行离线归档。</p>
-                    </div>
-                </div>
-                <button onclick="closeSecurityModal()" class="w-full py-4 rounded-2xl bg-blue-600 text-white font-black text-sm hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95">
-                    我已了解
-                </button>
-            </div>
-        </div>
-
-        <!-- 确认减少次数的弹窗 -->
-        <div id="confirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] hidden flex items-center justify-center p-6">
-            <div class="bg-white rounded-[2rem] p-8 max-w-[340px] w-full shadow-2xl border border-white/20">
-                <div class="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-5 mx-auto">
-                    <i data-lucide="minus-circle" class="w-6 h-6"></i>
-                </div>
-                <h3 class="text-xl font-black text-slate-900 mb-2 text-center">确认减少？</h3>
-                <p id="confirmText" class="text-slate-500 text-xs mb-8 leading-relaxed text-center"></p>
-                <div class="flex flex-col gap-3">
-                    <button id="confirmActionBtn" class="w-full py-3.5 rounded-xl bg-red-500 text-white font-black text-[13px] hover:bg-red-600 shadow-lg shadow-red-100 transition-all active:scale-95 order-1">
-                        减少次数
-                    </button>
-                    <button onclick="closeConfirm()" class="w-full py-3.5 rounded-xl bg-slate-100 text-slate-500 font-bold text-[13px] hover:bg-slate-200 transition-colors order-2">
-                        取消
-                    </button>
-                </div>
-            </div>
+            <div id="content-area" class="overflow-x-auto min-h-[400px]"></div>
         </div>
         
-        <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur text-white px-8 py-3.5 rounded-2xl shadow-2xl opacity-0 transition-all duration-500 pointer-events-none text-xs font-black tracking-wide border border-white/10 uppercase">Success</div>
+        <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-8 py-3.5 rounded-2xl shadow-2xl opacity-0 transition-all duration-500 pointer-events-none text-xs font-black z-[500]">Success</div>
     </div>
 
     <script>
         const FIXED_MEMBERS = ["谢本权", "李洁妮", "傅思芝", "陈鸿钦", "温秋雨", "邹颖威"];
         const MONTHS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
         
+        const TAB_CONFIGS = {
+            'A1': { header: '次数', btn: '次数', name: 'A1 榜单', color: 'bg-blue-600', hex: '#2563eb', grad: 'from-blue-600 to-indigo-700' },
+            'NP': { header: '意向数', btn: '意向', name: '伊赫莱NP榜单', color: 'bg-purple-600', hex: '#9333ea', grad: 'from-purple-600 to-fuchsia-700' },
+            'HST': { header: '意向数', btn: '意向', name: '赫双妥榜单', color: 'bg-amber-500', hex: '#f59e0b', grad: 'from-amber-500 to-orange-600' },
+            'ZYF': { header: '次数', btn: '次数', name: '早夜访榜单', color: 'bg-emerald-600', hex: '#059669', grad: 'from-emerald-500 to-teal-700' }
+        };
+
         let state = {
             currentTab: 'A1',
             currentMonth: new Date().getMonth(),
-            currentWeek: 1,
             view: 'rank',
             data: {},
             targets: {}
         };
 
-        function getTabConfig() {
-            if (state.currentTab === 'NP') {
-                return { 
-                    totalHeader: '意向数', 
-                    btnAdd: '添加意向', 
-                    displayName: '伊赫莱NP榜单',
-                    themeColor: 'bg-purple-600', // 调换为紫色
-                    themeHex: '#9333ea',
-                    grad: 'from-purple-600 to-fuchsia-700',
-                    hasMonthly: true
-                };
-            } else if (state.currentTab === 'HST') {
-                return { 
-                    totalHeader: '意向数', 
-                    btnAdd: '添加意向', 
-                    displayName: '赫双妥榜单',
-                    themeColor: 'bg-amber-500', // 调换为橙色
-                    themeHex: '#f59e0b',
-                    grad: 'from-amber-500 to-orange-600',
-                    hasMonthly: true
-                };
-            } else if (state.currentTab === 'ZYF') {
-                return { 
-                    totalHeader: '累计次数', 
-                    btnAdd: '次数增加', 
-                    displayName: '早夜访榜单',
-                    themeColor: 'bg-emerald-600',
-                    themeHex: '#059669',
-                    grad: 'from-emerald-500 to-teal-700',
-                    hasMonthly: false
-                };
+        function closeNotice() {
+            document.getElementById('noticeModal').classList.add('hidden');
+        }
+
+        function renderStars(count) {
+            if (count <= 0) return '';
+            if (count > 7) {
+                return `
+                    <div class="flex items-center gap-1.5 star-animate">
+                        <i data-lucide="star" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
+                        <span class="text-[11px] font-black text-amber-500 whitespace-nowrap">x ${count} 达成卓越</span>
+                    </div>
+                `;
             }
-            return { 
-                totalHeader: '累计次数', 
-                btnAdd: '次数增加', 
-                displayName: 'A1 榜单',
-                themeColor: 'bg-blue-600',
-                themeHex: '#2563eb',
-                grad: 'from-blue-600 to-indigo-700',
-                hasMonthly: false
-            };
-        }
-
-        function getWeekDateRange(mIdx, wNum) {
-            const year = new Date().getFullYear();
-            let firstDayOfMonth = new Date(year, mIdx, 1);
-            let firstMonday = new Date(firstDayOfMonth);
-            while (firstMonday.getDay() !== 1) {
-                firstMonday.setDate(firstMonday.getDate() + 1);
+            let stars = '';
+            for (let i = 0; i < count; i++) {
+                stars += `<i data-lucide="star" class="w-3.5 h-3.5 text-amber-400 fill-amber-400 star-animate"></i>`;
             }
-            const start = new Date(firstMonday);
-            start.setDate(firstMonday.getDate() + (wNum - 1) * 7);
-            const end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            return { fullString: `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}` };
+            return `<div class="flex items-center gap-0.5 flex-wrap max-w-[120px]">${stars}</div>`;
         }
 
-        function getWeeksInMonth(mIdx) {
-            const year = new Date().getFullYear();
-            const firstDay = new Date(year, mIdx, 1);
-            const lastDay = new Date(year, mIdx + 1, 0);
-            let firstMonday = new Date(firstDay);
-            while (firstMonday.getDay() !== 1) { firstMonday.setDate(firstMonday.getDate() + 1); }
-            const diff = lastDay - firstMonday;
-            return Math.ceil((diff / (1000 * 60 * 60 * 24) + 1) / 7);
-        }
-
-        function getAutoDetectedWeek(mIdx) {
-            const today = new Date();
-            if (today.getMonth() !== mIdx) return 1;
-            const year = today.getFullYear();
-            let firstMonday = new Date(year, mIdx, 1);
-            while (firstMonday.getDay() !== 1) { firstMonday.setDate(firstMonday.getDate() + 1); }
-            if (today < firstMonday) return 1;
-            const week = Math.ceil(((today - firstMonday) / (1000 * 60 * 60 * 24) + 1) / 7);
-            const maxWeeks = getWeeksInMonth(mIdx);
-            return Math.min(week, maxWeeks);
-        }
-
-        // 数据加载
-        try {
-            const saved = localStorage.getItem('rankings_v7_style');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                state.data = parsed.data || {};
-                state.targets = parsed.targets || {};
-            }
-        } catch(e) { console.error(e); }
-
-        function getStorageKey(m = state.currentMonth, w = state.currentWeek, t = state.currentTab) { return `${m}-${w}-${t}`; }
-
+        function getStorageKey(m = state.currentMonth, t = state.currentTab) { return `m-${m}-t-${t}`; }
         function getDataByKey(key) {
             if (!state.data[key]) { state.data[key] = FIXED_MEMBERS.map(name => ({ name, count: 0 })); }
             return state.data[key];
@@ -330,114 +323,93 @@
 
         function switchView(view) {
             state.view = view;
-            document.getElementById('nav-rank').classList.toggle('active', view === 'rank');
-            document.getElementById('nav-trend').classList.toggle('active', view === 'trend');
-            document.getElementById('nav-monthly').classList.toggle('active', view === 'monthly');
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`nav-${view}`).classList.add('active');
             render();
         }
 
         function render() {
             const container = document.getElementById('content-area');
-            const config = getTabConfig();
-            document.documentElement.style.setProperty('--theme-color-hex', config.themeHex);
-            
-            const bigTabTitle = document.getElementById('bigTabName');
-            const tabIndicator = document.getElementById('tabIndicator');
-            const navMonthly = document.getElementById('nav-monthly');
-
-            bigTabTitle.innerText = config.displayName;
-            tabIndicator.className = `w-3 h-12 rounded-full shadow-lg transition-all duration-500 ${config.themeColor}`;
-            
-            if (config.hasMonthly) {
-                navMonthly.classList.remove('hidden');
-            } else {
-                navMonthly.classList.add('hidden');
-                if (state.view === 'monthly') {
-                    state.view = 'rank';
-                    document.getElementById('nav-rank').classList.add('active');
-                    document.getElementById('nav-monthly').classList.remove('active');
-                }
-            }
-
-            const rangeInfo = getWeekDateRange(state.currentMonth, state.currentWeek);
-            document.getElementById('currentDateRange').innerText = `${MONTHS[state.currentMonth]} 第 ${state.currentWeek} 周 (${rangeInfo.fullString})`;
+            const config = TAB_CONFIGS[state.currentTab];
+            document.documentElement.style.setProperty('--theme-color-hex', config.hex);
+            document.getElementById('bigTabName').innerText = config.name;
+            document.getElementById('tabIndicator').className = `w-3 h-12 rounded-full shadow-lg ${config.color}`;
+            document.getElementById('currentMonthLabel').innerText = `${MONTHS[state.currentMonth]}数据汇总`;
             
             if (state.view === 'rank') renderRankView(container, config);
-            else if (state.view === 'trend') renderTrendView(container);
-            else if (state.view === 'monthly' && config.hasMonthly) renderMonthlyView(container, config);
-            else renderRankView(container, config);
+            else renderTrendView(container, config);
             
-            document.getElementById('last-update-time').innerText = `最后更新：${new Date().toLocaleDateString('zh-CN', {month:'long', day:'numeric'})}`;
             if (window.lucide) lucide.createIcons();
             save();
         }
 
         function renderRankView(container, config) {
             const items = calculateRanks(getDataByKey(getStorageKey()));
-            const showKpi = state.currentTab === 'A1';
             container.innerHTML = `
                 <table class="rank-table w-full text-left border-collapse">
                     <thead>
-                        <tr class="text-slate-400 text-[10px] border-b border-slate-50 bg-slate-50/30 uppercase tracking-[0.1em]">
-                            <th class="col-rank px-10 py-5 font-black">排名</th>
-                            <th class="col-name px-4 py-5 font-black">成员</th>
-                            ${showKpi ? '<th class="col-kpi px-4 py-5 font-black">KPI 百分比</th>' : ''}
-                            <th class="col-total px-4 py-5 font-black">${config.totalHeader}</th>
-                            <th class="col-action px-10 py-5 font-black text-right">操作</th>
+                        <tr class="text-slate-400 text-[11px] border-b border-slate-50 bg-slate-50/50 uppercase tracking-wider">
+                            <th class="col-rank px-10 py-5 font-black whitespace-nowrap">排名</th>
+                            <th class="col-name px-4 py-5 font-black whitespace-nowrap">成员</th>
+                            <th class="col-total px-4 py-5 font-black whitespace-nowrap">${config.header}</th>
+                            <th class="col-target px-4 py-5 font-black whitespace-nowrap">目标</th>
+                            <th class="col-progress px-4 py-5 font-black whitespace-nowrap">进度</th>
+                            <th class="col-action px-10 py-5 font-black text-right whitespace-nowrap">操作</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm">
                         ${items.map(item => {
-                            const kpi = ((item.count / 2) * 100).toFixed(0);
                             const badgeClass = item.rank <= 3 ? `badge-${item.rank}` : 'bg-slate-100 text-slate-400';
                             let trophyHtml = '';
-                            if (item.rank === 1) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-gold animate-bounce"></i>';
-                            else if (item.rank === 2) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-silver"></i>';
-                            else if (item.rank === 3) trophyHtml = '<i data-lucide="trophy" class="w-5 h-5 trophy-bronze"></i>';
-                            const starsHtml = item.count > 0 ? Array(item.count).fill('<i data-lucide="star" class="w-3 h-3 star-icon fill-current"></i>').join('') : '';
+                            if (item.rank === 1) trophyHtml = '<i data-lucide="trophy" class="w-4 h-4 trophy-gold trophy-float shrink-0"></i>';
+                            else if (item.rank === 2) trophyHtml = '<i data-lucide="trophy" class="w-4 h-4 trophy-silver trophy-float shrink-0"></i>';
+                            else if (item.rank === 3) trophyHtml = '<i data-lucide="trophy" class="w-4 h-4 trophy-bronze trophy-float shrink-0"></i>';
+
+                            const targetKey = `${state.currentTab}-${state.currentMonth}-${item.name}`;
+                            const targetVal = state.targets[targetKey] || 0;
+                            const percent = targetVal > 0 ? (item.count / targetVal * 100).toFixed(1) : 0;
+                            const isCompleted = parseFloat(percent) >= 100;
+
                             return `
-                                <tr class="border-b border-slate-50">
-                                    <td class="px-10 py-6">
-                                        <div class="w-8 h-8 rounded-lg ${badgeClass} flex items-center justify-center font-black text-xs shadow-sm">
-                                            ${item.rank}
-                                        </div>
+                                <tr class="border-b border-slate-50 transition-colors">
+                                    <td class="col-rank px-10 py-6">
+                                        <div class="w-8 h-8 rounded-lg ${badgeClass} flex items-center justify-center font-black text-xs shadow-sm">${item.rank}</div>
                                     </td>
-                                    <td class="px-4 py-6">
-                                        <div class="flex items-center gap-4">
-                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br ${config.grad} flex items-center justify-center text-xs text-white font-black shadow-md border-2 border-white">
-                                                ${item.name.slice(0,1)}
-                                            </div>
-                                            <div class="flex items-center gap-2">
-                                                <span class="font-bold text-slate-700 text-base">${item.name}</span>
-                                                ${trophyHtml}
+                                    <td class="col-name px-4 py-6">
+                                        <div class="flex items-center gap-3 overflow-hidden">
+                                            <div class="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br ${config.grad} flex items-center justify-center text-[10px] text-white font-black border-2 border-white shadow-sm">${item.name.slice(0,1)}</div>
+                                            <div class="flex items-center gap-2 truncate pr-2">
+                                                <span class="font-bold text-slate-700 truncate">${item.name}</span>
+                                                <span class="flex items-center justify-center w-5 h-5">
+                                                    ${trophyHtml}
+                                                </span>
                                             </div>
                                         </div>
                                     </td>
-                                    ${showKpi ? `
-                                    <td class="px-4 py-6">
+                                    <td class="col-total px-4 py-6">
                                         <div class="flex flex-col gap-1.5">
-                                            <div class="flex justify-between items-end">
-                                                <span class="font-black text-slate-800 text-[10px]">${kpi}%</span>
-                                            </div>
-                                            <div class="w-24 h-2 bg-slate-100 rounded-full overflow-hidden p-[1px]">
-                                                <div class="h-full ${config.themeColor} rounded-full" style="width: ${Math.min(kpi, 100)}%"></div>
-                                            </div>
-                                        </div>
-                                    </td>` : ''}
-                                    <td class="px-4 py-6">
-                                        <div class="flex flex-col gap-1">
                                             <span class="font-black text-2xl text-slate-900 tabular-nums leading-none">${item.count}</span>
-                                            <div class="flex flex-wrap items-center max-w-[200px]">
-                                                ${starsHtml}
+                                            ${renderStars(item.count)}
+                                        </div>
+                                    </td>
+                                    <td class="col-target px-4 py-6">
+                                        <input type="number" value="${targetVal}" onchange="updateTarget('${item.name}', this.value)"
+                                            class="w-16 bg-slate-50 border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-slate-500 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none transition-all text-center">
+                                    </td>
+                                    <td class="col-progress px-4 py-6">
+                                        <div class="flex flex-col gap-1.5 pr-4">
+                                            <span class="font-black text-[12px] ${isCompleted ? 'text-green-600' : 'text-slate-400'}">${percent}%</span>
+                                            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div class="h-full ${isCompleted ? 'bg-green-500' : config.color} transition-all duration-500" style="width: ${Math.min(percent, 100)}%"></div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-10 py-6">
-                                        <div class="flex justify-end items-center gap-3">
-                                            <button onclick="increment('${item.name}')" class="px-4 py-2 ${config.themeColor} text-white rounded-xl text-[11px] font-black hover:brightness-110 shadow-lg ${config.themeColor.replace('bg-', 'shadow-')}/20 transition-all active:scale-90 flex items-center gap-1.5">
-                                                <i data-lucide="plus" class="w-3 h-3"></i> ${config.btnAdd}
+                                    <td class="col-action px-10 py-6">
+                                        <div class="flex justify-end items-center gap-2">
+                                            <button onclick="increment('${item.name}')" class="px-3 py-2 ${config.color} text-white rounded-xl text-[10px] font-black hover:scale-105 transition-all active:scale-95 flex items-center gap-1">
+                                                <i data-lucide="plus" class="w-3 h-3"></i> ${config.btn}
                                             </button>
-                                            <button onclick="askDecrement('${item.name}')" class="p-2 bg-white border border-slate-200 text-slate-400 rounded-xl hover:border-red-200 hover:text-red-500 transition-all active:scale-90 shadow-sm">
+                                            <button onclick="askDecrement('${item.name}')" class="p-2 text-slate-300 hover:text-red-400 transition-colors">
                                                 <i data-lucide="minus-circle" class="w-4 h-4"></i>
                                             </button>
                                         </div>
@@ -450,101 +422,41 @@
             `;
         }
 
-        function renderTrendView(container) {
+        function renderTrendView(container, config) {
             const currentRanks = calculateRanks(getDataByKey(getStorageKey()));
-            let prevMonth = state.currentMonth, prevWeek = state.currentWeek - 1;
-            if (prevWeek < 1) {
-                prevMonth = state.currentMonth - 1;
-                if (prevMonth < 0) prevMonth = 11;
-                prevWeek = getWeeksInMonth(prevMonth);
-            }
-            const prevRanks = calculateRanks(getDataByKey(getStorageKey(prevMonth, prevWeek, state.currentTab)));
-
-            container.innerHTML = `
-                <table class="trend-table rank-table w-full text-left border-collapse">
-                    <thead>
-                        <tr class="text-slate-400 text-[10px] border-b border-slate-50 bg-slate-50/30 uppercase tracking-[0.1em]">
-                            <th class="col-t-rank px-10 py-5 font-black">本周排名</th>
-                            <th class="col-t-name px-4 py-5 font-black text-center">成员</th>
-                            <th class="col-t-trend px-4 py-5 font-black text-center">趋势变化</th>
-                            <th class="col-t-prev px-10 py-5 font-black text-right">上周排名</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-sm">
-                        ${currentRanks.map(item => {
-                            const prevItem = prevRanks.find(p => p.name === item.name);
-                            let changeHtml = '<span class="text-slate-300 font-black tracking-widest text-lg">—</span>';
-                            let prevDisp = '-';
-                            if (prevItem) {
-                                prevDisp = `#${prevItem.rank}`;
-                                const diff = prevItem.rank - item.rank;
-                                if (diff > 0) changeHtml = `<div class="flex flex-col items-center"><i data-lucide="chevron-up" class="w-7 h-7 text-green-500"></i><span class="text-green-600 font-black text-[13px]">+${diff}</span></div>`;
-                                else if (diff < 0) changeHtml = `<div class="flex flex-col items-center"><i data-lucide="chevron-down" class="w-7 h-7 text-red-400"></i><span class="text-red-500 font-black text-[13px]">${diff}</span></div>`;
-                            }
-                            return `
-                                <tr class="border-b border-slate-50">
-                                    <td class="px-10 py-8"><span class="font-black text-slate-900 text-xl italic">#${item.rank}</span></td>
-                                    <td class="px-4 py-8 text-center"><span class="font-bold text-slate-700 text-base">${item.name}</span></td>
-                                    <td class="px-4 py-8"><div class="flex justify-center">${changeHtml}</div></td>
-                                    <td class="px-10 py-8 text-right"><span class="text-slate-400 font-black tabular-nums text-sm">${prevDisp}</span></td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        function renderMonthlyView(container, config) {
-            const totalWeeks = getWeeksInMonth(state.currentMonth);
-            const monthlyStats = FIXED_MEMBERS.map(name => {
-                let totalMonthCount = 0;
-                for (let w = 1; w <= totalWeeks; w++) {
-                    const weekData = getDataByKey(getStorageKey(state.currentMonth, w, state.currentTab));
-                    const member = weekData.find(m => m.name === name);
-                    if (member) totalMonthCount += member.count;
-                }
-                const targetKey = `${state.currentTab}-${state.currentMonth}-${name}`;
-                const target = state.targets[targetKey] || 0;
-                const percent = target > 0 ? (totalMonthCount / target * 100).toFixed(1) : 0;
-                return { name, total: totalMonthCount, target, percent };
-            });
+            let prevMonthIndex = state.currentMonth - 1; 
+            if (prevMonthIndex < 0) prevMonthIndex = 11;
+            const prevMonthData = getDataByKey(getStorageKey(prevMonthIndex, state.currentTab));
+            const prevRanks = calculateRanks(prevMonthData);
 
             container.innerHTML = `
                 <table class="rank-table w-full text-left border-collapse">
                     <thead>
-                        <tr class="text-slate-400 text-[10px] border-b border-slate-50 bg-slate-50/30 uppercase tracking-[0.1em]">
-                            <th class="px-10 py-5 font-black">成员</th>
-                            <th class="px-4 py-5 font-black">当月累计 (${config.totalHeader})</th>
-                            <th class="px-4 py-5 font-black">当月目标数</th>
-                            <th class="px-10 py-5 font-black text-right">完成百分比</th>
+                        <tr class="text-slate-400 text-[11px] border-b border-slate-50 bg-slate-50/50 uppercase font-black tracking-wider">
+                            <th class="px-10 py-5">成员</th>
+                            <th class="px-4 py-5 text-center">当前排名</th>
+                            <th class="px-4 py-5 text-center">当月数值</th>
+                            <th class="px-4 py-5 text-center">上月排名</th>
+                            <th class="px-10 py-5 text-right">趋势</th>
                         </tr>
                     </thead>
-                    <tbody class="text-sm">
-                        ${monthlyStats.map(item => {
-                            const isCompleted = parseFloat(item.percent) >= 100;
+                    <tbody>
+                        ${currentRanks.map(item => {
+                            const prevItem = prevRanks.find(p => p.name === item.name);
+                            let changeHtml = '<span class="text-slate-300">—</span>';
+                            if (prevItem) {
+                                const rankDiff = prevItem.rank - item.rank;
+                                if (rankDiff > 0) changeHtml = `<div class="flex items-center justify-end gap-1 text-green-500 font-black text-xs"><i data-lucide="arrow-up" class="w-4 h-4"></i>提升 ${rankDiff}</div>`;
+                                else if (rankDiff < 0) changeHtml = `<div class="flex items-center justify-end gap-1 text-red-400 font-black text-xs"><i data-lucide="arrow-down" class="w-4 h-4"></i>下降 ${Math.abs(rankDiff)}</div>`;
+                                else changeHtml = `<span class="text-slate-400 font-bold">持平</span>`;
+                            }
                             return `
                                 <tr class="border-b border-slate-50">
-                                    <td class="px-10 py-6">
-                                        <span class="font-bold text-slate-700 text-base">${item.name}</span>
-                                    </td>
-                                    <td class="px-4 py-6">
-                                        <span class="font-black text-xl text-slate-900">${item.total}</span>
-                                    </td>
-                                    <td class="px-4 py-6">
-                                        <input type="number" value="${item.target}" 
-                                            onchange="updateTarget('${item.name}', this.value)"
-                                            class="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
-                                            placeholder="设置目标">
-                                    </td>
-                                    <td class="px-10 py-6 text-right">
-                                        <div class="flex flex-col items-end gap-1">
-                                            <span class="font-black text-xl ${isCompleted ? 'text-green-600' : 'text-slate-800'}">${item.percent}%</span>
-                                            <div class="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div class="h-full ${isCompleted ? 'bg-green-500' : config.themeColor} rounded-full" style="width: ${Math.min(item.percent, 100)}%"></div>
-                                            </div>
-                                        </div>
-                                    </td>
+                                    <td class="px-10 py-8 font-bold text-slate-700">${item.name}</td>
+                                    <td class="px-4 py-8 text-center"><span class="font-black text-xl italic text-slate-900">#${item.rank}</span></td>
+                                    <td class="px-4 py-8 text-center font-black tabular-nums">${item.count}</td>
+                                    <td class="px-4 py-8 text-center text-slate-400 font-bold">#${prevItem ? prevItem.rank : '--'}</td>
+                                    <td class="px-10 py-8 text-right">${changeHtml}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -555,112 +467,115 @@
 
         function updateTarget(name, val) {
             const targetKey = `${state.currentTab}-${state.currentMonth}-${name}`;
-            state.targets[targetKey] = parseInt(val) || 0;
-            save(); render(); showToast(`已更新 ${name} 的月度目标`);
+            state.targets[targetKey] = Math.max(0, parseInt(val) || 0);
+            save(); render();
         }
 
         function increment(name) {
             const m = getDataByKey(getStorageKey()).find(x => x.name === name);
-            if (m) { m.count++; render(); showToast(`成功: ${name} 数据已录入`); }
+            if (m) { m.count++; render(); showToast(`${name} 数值+1`); }
         }
 
         let pendingMember = null;
         function askDecrement(name) {
             const m = getDataByKey(getStorageKey()).find(x => x.name === name);
-            if (!m || m.count <= 0) { showToast('警告: 数值已为0'); return; }
+            if (!m || m.count <= 0) return;
             pendingMember = name;
-            document.getElementById('confirmText').innerText = `您正在减少“${name}”的记录。此操作将直接影响当前排名。`;
+            // 改进后的内容填充
+            document.getElementById('confirmText').innerHTML = `
+                <p class="text-slate-500 font-medium text-xs mb-1">即将扣减成员统计：</p>
+                <p class="text-2xl font-black text-red-600">${name}</p>
+            `;
             document.getElementById('confirmModal').classList.remove('hidden');
             document.getElementById('confirmActionBtn').onclick = () => {
                 const target = getDataByKey(getStorageKey()).find(x => x.name === pendingMember);
-                if (target) { target.count--; render(); showToast(`更新: 数据已减少`); }
+                if (target) { target.count--; render(); showToast(`已成功扣减 ${pendingMember}`); }
                 closeConfirm();
             };
         }
 
-        function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); pendingMember = null; }
-        function closeSecurityModal() { document.getElementById('securityModal').classList.add('hidden'); }
-        function save() { localStorage.setItem('rankings_v7_style', JSON.stringify({ data: state.data, targets: state.targets })); }
-        
+        function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); }
+        function save() { localStorage.setItem('rankings_v11', JSON.stringify({ data: state.data, targets: state.targets })); }
         function showToast(msg) {
             const t = document.getElementById('toast');
-            t.innerText = msg; t.style.opacity = '1'; t.style.bottom = '50px';
-            setTimeout(() => { t.style.opacity = '0'; t.style.bottom = '40px'; }, 2000);
+            t.innerText = msg; t.style.opacity = '1';
+            setTimeout(() => t.style.opacity = '0', 2000);
         }
 
         function selectTab(t) { state.currentTab = t; render(); }
-        function updateMonth() {
-            state.currentMonth = parseInt(document.getElementById('monthSelect').value);
-            state.currentWeek = (state.currentMonth === new Date().getMonth()) ? getAutoDetectedWeek(state.currentMonth) : 1;
-            refreshWeekOptions();
-        }
+        function updateMonth() { state.currentMonth = parseInt(document.getElementById('monthSelect').value); render(); }
 
-        function refreshWeekOptions() {
-            const ws = document.getElementById('weekSelect');
-            ws.innerHTML = '';
-            const totalWeeks = getWeeksInMonth(state.currentMonth);
-            for (let i = 1; i <= totalWeeks; i++) {
-                const opt = document.createElement('option');
-                opt.value = i;
-                const range = getWeekDateRange(state.currentMonth, i);
-                opt.text = `第 ${i} 周 (${range.fullString})`;
-                opt.selected = (i === state.currentWeek);
-                ws.add(opt);
-            }
-            render();
-        }
-
-        function changeWeek(v) { state.currentWeek = parseInt(v); render(); }
-
-        function exportToExcel() {
-            try {
-                const items = calculateRanks(getDataByKey(getStorageKey()));
-                const config = getTabConfig();
-                const filename = `${state.currentTab}_${MONTHS[state.currentMonth]}_Report.xlsx`;
-                const excelData = items.map(i => {
-                    const row = { "排名": i.rank, "姓名": i.name };
-                    if (state.currentTab === 'A1') row["KPI百分比"] = ((i.count / 2) * 100).toFixed(0) + "%";
-                    row[config.totalHeader] = i.count;
-                    return row;
-                });
-                const worksheet = XLSX.utils.json_to_sheet(excelData);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Ranking");
-                XLSX.writeFile(workbook, filename);
-                showToast('导出: Excel 文件已生成');
-            } catch (error) { showToast('错误: 导出失败'); }
-        }
-
+        // --- 核心更新逻辑：带奖牌图标的复制功能 ---
         function copyToClipboard() {
             const items = calculateRanks(getDataByKey(getStorageKey()));
-            const config = getTabConfig();
-            let text = `【${state.currentTab}】${MONTHS[state.currentMonth]}第${state.currentWeek}周排名\n`;
+            const config = TAB_CONFIGS[state.currentTab];
+            const medals = { 1: '🏆', 2: '🥈', 3: '🥉' };
+            
+            let text = `🌟 【${config.name}】${MONTHS[state.currentMonth]} 实时榜单排名\n`;
+            text += `--------------------------------\n`;
+            
             items.forEach(i => {
-                let rankSymbol = i.rank + ".";
-                if (i.rank === 1) rankSymbol = "1 🏆.";
-                else if (i.rank === 2) rankSymbol = "2 🥈.";
-                else if (i.rank === 3) rankSymbol = "3 🥉.";
-                text += `${rankSymbol} ${i.name}：${config.totalHeader} ${i.count}\n`;
+                const medal = medals[i.rank] || '';
+                // 拼接：#1🏆. 谢本权：累计次数 7
+                text += `#${i.rank}${medal}. ${i.name}：累计${config.header} ${i.count}\n`;
             });
-            const el = document.createElement('textarea');
-            el.value = text; document.body.appendChild(el); el.select();
-            document.execCommand('copy'); document.body.removeChild(el);
-            showToast('已复制: 格式化文本已就绪');
+            
+            text += `--------------------------------\n`;
+            text += `生成时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`;
+
+            const el = document.createElement('textarea'); 
+            el.value = text; 
+            document.body.appendChild(el); 
+            el.select();
+            document.execCommand('copy'); 
+            document.body.removeChild(el);
+            showToast('已复制带奖牌的榜单内容');
+        }
+
+        function exportAllToExcel() {
+            const allData = [];
+            ['A1', 'NP', 'HST', 'ZYF'].forEach(tabId => {
+                const config = TAB_CONFIGS[tabId];
+                const items = calculateRanks(getDataByKey(getStorageKey(state.currentMonth, tabId)));
+                allData.push([config.name]);
+                allData.push(['排名', '成员', config.header, '目标', '进度']);
+                items.forEach(item => {
+                    const targetKey = `${tabId}-${state.currentMonth}-${item.name}`;
+                    const targetVal = state.targets[targetKey] || 0;
+                    const percent = targetVal > 0 ? (item.count / targetVal * 100).toFixed(1) + '%' : '0%';
+                    allData.push([item.rank, item.name, item.count, targetVal, percent]);
+                });
+                allData.push([]);
+            });
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(allData);
+            const merges = [];
+            let currentRow = 0;
+            ['A1', 'NP', 'HST', 'ZYF'].forEach(tabId => {
+                merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 4 } });
+                const items = getDataByKey(getStorageKey(state.currentMonth, tabId));
+                currentRow += (items.length + 3);
+            });
+            ws['!merges'] = merges;
+            XLSX.utils.book_append_sheet(wb, ws, "汇总榜单");
+            XLSX.writeFile(wb, `全榜单汇总_${MONTHS[state.currentMonth]}.xlsx`);
         }
 
         window.onload = () => {
             const ms = document.getElementById('monthSelect');
-            const now = new Date();
-            const currentM = now.getMonth();
+            const stored = localStorage.getItem('rankings_v11');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                state.data = parsed.data || {};
+                state.targets = parsed.targets || {};
+            }
             MONTHS.forEach((m, i) => {
                 const opt = document.createElement('option');
                 opt.value = i; opt.text = m;
-                opt.selected = (i === currentM);
+                if (i === state.currentMonth) opt.selected = true;
                 ms.add(opt);
             });
-            state.currentMonth = currentM;
-            state.currentWeek = getAutoDetectedWeek(currentM);
-            refreshWeekOptions();
+            render();
         };
     </script>
 </body>
